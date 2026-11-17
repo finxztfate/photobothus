@@ -1,0 +1,1 @@
+const fs = require('fs'); const path = 'C:\\Users\\andre\\photobothus\\src\\pages\\Photobooth.js'; let s = fs.readFileSync(path, 'utf8'); const bad = className={\\ilter-btn \\\}; const good = className={\\ilter-btn \\\}; s = s.split(bad).join(good); fs.writeFileSync(path, s); console.log('patched');

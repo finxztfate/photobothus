@@ -1,0 +1,13 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "CI=false GENERATE_SOURCEMAP=false npx react-scripts build && npm --prefix server ci --omit=dev"
+  },
+  "deploy": {
+    "preDeployCommand": "npm --prefix server run db:init",
+    "startCommand": "NODE_ENV=production node server/src/index.js",
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 120,
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

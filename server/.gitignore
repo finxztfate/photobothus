@@ -1,0 +1,4 @@
+uploads/
+.env
+.photo-key
+node_modules/

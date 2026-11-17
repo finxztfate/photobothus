@@ -1,0 +1,57 @@
+.confirm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 12, 8, 0.72);
+}
+
+.confirm-modal {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  background: var(--bg-card, #221a11);
+  color: var(--text-heading, #fff8ee);
+  border: 1px solid var(--border-card, rgba(232, 163, 61, 0.35));
+  border-radius: 16px;
+  box-shadow: var(--shadow-card, 0 18px 40px rgba(0, 0, 0, 0.35));
+}
+
+.confirm-modal h2 {
+  margin: 0;
+  font-family: var(--font-heading, inherit);
+}
+
+.confirm-modal p {
+  margin: 0;
+  color: var(--text-body, #d9c9b8);
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.confirm-modal-actions button {
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-card, rgba(232, 163, 61, 0.35));
+  background: transparent;
+  color: var(--text-heading, #fff8ee);
+}
+
+.confirm-modal-yes {
+  background: var(--btn-gradient, linear-gradient(135deg, #d2800d, #ebb160)) !important;
+  border-color: var(--btn-border, #6e4000) !important;
+  color: #f0efef !important;
+}

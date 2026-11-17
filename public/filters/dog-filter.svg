@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <rect width="300" height="200" rx="20" fill="rgba(0,0,0,0.1)"/>
+  <text x="150" y="110" font-family="Arial" font-size="28" fill="#333" text-anchor="middle">🐶 Dog Filter</text>
+  <text x="150" y="150" font-family="Arial" font-size="16" fill="#666" text-anchor="middle">(Replace with your PNG)</text>
+</svg>

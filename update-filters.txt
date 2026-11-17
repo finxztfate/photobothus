@@ -1,0 +1,31 @@
+.filters-bar {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.12);
+  z-index: 25;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.filters-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.filters-bar .filter-buttons {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin: 0 auto;
+}

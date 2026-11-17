@@ -1,0 +1,288 @@
+/* ===========================
+   About Page
+   =========================== */
+.page-about {
+  --about-banner-bg: linear-gradient(90deg, #7A4B22 0%, #4E2D14 100%);
+  --about-accent: #E8A33D;
+  --about-glow: rgba(165, 8, 8, 1);
+  --about-glow-mid: rgba(115, 6, 6, 0.75);
+
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+[data-theme="light"] .page-about {
+  --about-banner-bg: linear-gradient(90deg, #A27D48 0%, #7D6037 100%);
+  --about-accent: #B67214;
+  --about-glow: rgba(196, 120, 24, 0.55);
+  --about-glow-mid: rgba(196, 120, 24, 0.2);
+}
+
+.about-page * {
+  font-family: inherit;
+}
+
+.about-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-subheading);
+  color: var(--text-heading);
+  overflow: hidden;
+}
+
+.about-accent {
+  color: var(--about-accent);
+}
+
+/* ===========================
+   Banner
+   =========================== */
+.about-banner {
+  background: var(--about-banner-bg);
+  padding: 22px 6vw;
+}
+
+.about-banner-title {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: var(--font-heading);
+  font-size: clamp(2.6rem, 6vw, 4.2rem);
+  font-weight: 600;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  animation: aboutFadeUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+[data-theme="light"] .about-banner-title .about-accent {
+  color: #FFD48A;
+}
+
+/* ===========================
+   Intro + polaroids
+   =========================== */
+.about-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 6vw;
+  max-width: calc(1200px + 12vw);
+  width: 100%;
+  margin: 0 auto;
+  padding: 80px 6vw 40px;
+}
+
+.about-intro-text {
+  max-width: 540px;
+  animation: aboutFadeUp 0.6s 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.about-intro-text p {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.about-intro-text p + p {
+  margin-top: 10px;
+}
+
+.about-feedback-btn {
+  margin: 56px 0 0 36px;
+}
+
+.about-polaroids {
+  position: relative;
+  height: clamp(340px, 36vw, 500px);
+  animation: aboutFadeUp 0.6s 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.about-polaroid {
+  position: absolute;
+  width: clamp(220px, 24vw, 340px);
+  padding: 16px 16px 58px;
+  background: #EEEDEA;
+  border-radius: 2px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+  transition: transform 0.35s ease;
+}
+
+.about-polaroid img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #000000;
+}
+
+.about-polaroid--back {
+  top: 0;
+  left: 8%;
+  transform: rotate(8deg);
+}
+
+.about-polaroid--front {
+  top: 8%;
+  left: calc(8% + 7%);
+  transform: rotate(10deg);
+}
+
+.about-polaroids:hover .about-polaroid--back {
+  transform: rotate(4deg) translateX(-14px);
+}
+
+.about-polaroids:hover .about-polaroid--front {
+  transform: rotate(13deg) translateX(14px);
+}
+
+/* ===========================
+   Shared outline button
+   =========================== */
+.about-outline-btn {
+  display: inline-block;
+  padding: 14px 44px;
+  background: transparent;
+  border: 2px solid var(--about-accent);
+  border-radius: 6px;
+  color: var(--about-accent);
+  font-family: 'Krona One', var(--font-heading);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.about-outline-btn:hover {
+  background: var(--about-accent);
+  color: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+/* ===========================
+   "The booth is open" CTA
+   =========================== */
+.about-cta {
+  position: relative;
+  flex: 1;
+  text-align: center;
+  padding: 76px 0 110px;
+  background:
+    radial-gradient(ellipse 72% 100% at 50% 100%, var(--about-glow) 0%, var(--about-glow-mid) 42%, transparent 74%);
+}
+
+.about-divider {
+  margin-bottom: 64px;
+}
+
+.about-cta-title,
+.about-cta-text {
+  padding: 0 6vw;
+}
+
+.about-cta-title {
+  font-family: 'Krona One', var(--font-heading);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 400;
+  color: var(--text-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  -webkit-text-stroke: 1.5px currentColor;
+  margin: 0;
+}
+
+.about-cta-title .about-accent {
+  -webkit-text-stroke-color: var(--about-accent);
+}
+
+.about-cta-text {
+  font-size: 1.35rem;
+  color: var(--text-heading);
+  margin: 18px 0 44px;
+}
+
+/* ===========================
+   Keyframes
+   =========================== */
+@keyframes aboutFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===========================
+   Responsive
+   =========================== */
+@media (max-width: 768px) {
+  .about-banner {
+    padding: 16px 20px;
+  }
+
+  .about-intro {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 36px 20px 8px;
+  }
+
+  .about-intro-text {
+    max-width: none;
+  }
+
+  .about-feedback-btn {
+    margin: 28px 0 0;
+  }
+
+  .about-intro-text p {
+    font-size: 1.05rem;
+  }
+
+  .about-polaroids {
+    height: 300px;
+  }
+
+  .about-polaroid {
+    width: 180px;
+    padding: 12px 12px 44px;
+  }
+
+  .about-polaroid--back {
+    left: calc(50% - 120px);
+  }
+
+  .about-polaroid--front {
+    top: 30px;
+    left: calc(50% - 70px);
+  }
+
+  .about-cta {
+    padding: 52px 0 64px;
+  }
+
+  .about-divider {
+    margin-bottom: 40px;
+  }
+
+  .about-cta-title,
+  .about-cta-text {
+    padding: 0 20px;
+  }
+
+  .about-outline-btn {
+    padding: 12px 30px;
+    font-size: 0.75rem;
+  }
+
+  .about-cta-text {
+    font-size: 1rem;
+  }
+}
