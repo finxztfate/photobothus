@@ -77,7 +77,7 @@ function PhotoboothMobile() {
     try {
       const dataUrl = await cameraRef.current.captureBooth({
         aspect: 3 / 4,
-        fit: 'contain',
+        fit: 'cover',
         mirrored,
         settleMs: 50,
       });
@@ -233,13 +233,13 @@ function PhotoboothMobile() {
             </div>
 
             <div className="event-booth-stage">
-              <div className="event-booth-viewfinder is-contain">
+              <div className="event-booth-viewfinder">
                 <Camera
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
                   mirrored={mirrored}
                   orientation="portrait"
-                  objectFit="contain"
+                  objectFit="cover"
                   deviceId={selectedCamera}
                   onError={setCameraError}
                   showFullscreenButton={false}
