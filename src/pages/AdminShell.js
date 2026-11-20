@@ -12,7 +12,6 @@ const NAV = [
   { to: '/admin/events', label: 'Events' },
   { to: '/admin/spotlight', label: 'Spotlight' },
   { to: '/admin/payments', label: 'Payments' },
-  { to: '/admin/settings', label: 'Settings' },
 ];
 
 function AdminShell({ theme = 'dark', toggleTheme }) {
