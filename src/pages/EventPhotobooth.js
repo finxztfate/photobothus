@@ -92,7 +92,7 @@ function EventPhotobooth() {
     window.setTimeout(() => setFlash(false), 180);
     try {
       const dataUrl = await cameraRef.current.captureBooth({
-        aspect: 3 / 4,
+        aspect: 4 / 3,
         fit: 'cover',
         mirrored,
         settleMs: 50,
@@ -256,7 +256,7 @@ function EventPhotobooth() {
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
                   mirrored={mirrored}
-                  orientation="portrait"
+                  orientation="landscape"
                   objectFit="cover"
                   deviceId={selectedCamera}
                   onError={setCameraError}
