@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import EventHostListCard from './components/EventHostListCard';
+import { EventHostDashLayout } from './components/EventHostSidebar';
 import './EventHostListPage.css';
 
 function EventHostListPage() {
@@ -37,20 +38,29 @@ function EventHostListPage() {
     return { activeEvents: active, historyEvents: history, totalStrips: strips };
   }, [events]);
 
-  if (loading) return <div className="events-page"><p>Loading…</p></div>;
+  if (loading) {
+    return (
+      <EventHostDashLayout>
+        <div className="events-page"><p>Loading…</p></div>
+      </EventHostDashLayout>
+    );
+  }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isCustomer) return <Navigate to="/admin" replace />;
 
   return (
+    <EventHostDashLayout>
     <div className="events-page hub-dash-page">
       <div className="hub-shell">
         <header className="hub-hero">
           <div>
             <p className="hub-kicker">Event Dashboard</p>
-            <h1>Your Events</h1>
-            <p>Welcome{user?.displayName ? `, ${user.displayName}` : ''}. Manage live events and review completed history.</p>
+            <h1>Your events</h1>
+            <p>
+              Welcome{user?.displayName ? `, ${user.displayName}` : ''}.
+              Run a live booth, then open completed events when guest photos unlock.
+            </p>
           </div>
-          <Link to="/events/new" className="hub-primary-btn">New Event</Link>
         </header>
 
         {error && <p className="events-error">{error}</p>}
@@ -70,7 +80,7 @@ function EventHostListPage() {
           </div>
           <div className="hub-stat">
             <strong>{totalStrips}</strong>
-            <span>Strips collected</span>
+            <span>Photos collected</span>
           </div>
         </section>
 
@@ -81,14 +91,14 @@ function EventHostListPage() {
             <Link to="/events/new" className="hub-primary-btn">Create New Event</Link>
           </div>
         ) : (
-          <div className="hub-panels">
-            <section className="hub-panel">
-              <div className="hub-panel-head">
-                <h2>Active Events</h2>
+          <div className="hub-sections">
+            <section>
+              <div className="hub-section-head">
+                <h2>Live</h2>
                 <span>{activeEvents.length}</span>
               </div>
               {activeEvents.length === 0 ? (
-                <p className="hub-panel-empty">No live events. Create one to start collecting photos.</p>
+                <p className="hub-panel-empty">Nothing live right now. Create an event to open the guest booth.</p>
               ) : (
                 <div className="hub-event-list">
                   {activeEvents.map((event) => (
@@ -102,13 +112,13 @@ function EventHostListPage() {
               )}
             </section>
 
-            <section className="hub-panel">
-              <div className="hub-panel-head">
-                <h2>History · Completed</h2>
+            <section>
+              <div className="hub-section-head">
+                <h2>Completed</h2>
                 <span>{historyEvents.length}</span>
               </div>
               {historyEvents.length === 0 ? (
-                <p className="hub-panel-empty">Ended events show here as completed history.</p>
+                <p className="hub-panel-empty">Ended events land here with their guest photos unlocked.</p>
               ) : (
                 <div className="hub-event-list">
                   {historyEvents.map((event) => (
@@ -126,6 +136,7 @@ function EventHostListPage() {
         )}
       </div>
     </div>
+    </EventHostDashLayout>
   );
 }
 

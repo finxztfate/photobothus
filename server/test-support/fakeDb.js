@@ -113,14 +113,14 @@ function createFakeDb() {
       [tables.events.filter((e) => e.owner_id === ownerId).sort((a, b) => b.id - a.id).map(withCounts)]],
     [/^SELECT e\.\*, COUNT\(s\.id\) AS strip_count, COUNT\(DISTINCT s\.guest_key\) AS guest_count FROM events e LEFT JOIN strips s ON s\.event_id = e\.id WHERE e\.id = \? AND e\.owner_id = \?/, ([id, ownerId]) =>
       [tables.events.filter((e) => e.id === Number(id) && e.owner_id === ownerId).map(withCounts)]],
-    [/^SELECT e\.\*, COUNT\(s\.id\) AS strip_count FROM events e LEFT JOIN strips s ON s\.event_id = e\.id WHERE e\.id = \?/, ([id]) =>
+    [/^SELECT e\.\*, COUNT\(s\.id\) AS strip_count(?:, COUNT\(DISTINCT s\.guest_key\) AS guest_count)? FROM events e LEFT JOIN strips s ON s\.event_id = e\.id WHERE e\.id = \?/, ([id]) =>
       [tables.events.filter((e) => e.id === Number(id)).map(withCounts)]],
     [/^SELECT \* FROM events WHERE id = \? AND owner_id = \?/, ([id, ownerId]) =>
       [tables.events.filter((e) => e.id === Number(id) && e.owner_id === ownerId)]],
     [/^SELECT \* FROM events WHERE id = \?/, ([id]) => [tables.events.filter((e) => e.id === Number(id))]],
-    [/^SELECT id(, name)? FROM events WHERE id = \? AND owner_id = \?/, ([id, ownerId]) =>
+    [/^SELECT id(?:, name)?(?:, is_active)? FROM events WHERE id = \? AND owner_id = \?/, ([id, ownerId]) =>
       [tables.events.filter((e) => e.id === Number(id) && e.owner_id === ownerId)]],
-    [/^SELECT owner_id FROM events WHERE id = \?/, ([id]) => [tables.events.filter((e) => e.id === Number(id))]],
+    [/^SELECT owner_id(?:, is_active)? FROM events WHERE id = \?/, ([id]) => [tables.events.filter((e) => e.id === Number(id))]],
     [/^SELECT id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, code, is_active, created_at FROM events WHERE code = \?/, ([code]) =>
       [tables.events.filter((e) => e.code === code)]],
     [/^SELECT id, is_active FROM events WHERE code = \?/, ([code]) => [tables.events.filter((e) => e.code === code)]],

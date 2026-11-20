@@ -138,7 +138,7 @@ router.post('/events/:code/strips', upload.single('image'), async (req, res) => 
     const uploadCount = Number(countRow.count);
     if (uploadCount >= maxGuestUploads) {
       return res.status(403).json({
-        error: `Upload limit reached. Guests can only upload ${maxGuestUploads} photos per event.`,
+        error: `Upload limit reached. Guests can only upload ${maxGuestUploads} photos each.`,
         maxGuestUploads,
         guestUploadCount: uploadCount,
         uploadsRemaining: 0,

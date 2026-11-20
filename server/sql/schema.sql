@@ -123,11 +123,14 @@ CREATE TABLE IF NOT EXISTS app_settings (
 ) ENGINE=InnoDB;
 
 INSERT INTO app_settings (setting_key, setting_value)
-SELECT 'max_guest_uploads', '10'
+SELECT 'max_guest_uploads', '3'
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM app_settings WHERE setting_key = 'max_guest_uploads'
 );
+
+UPDATE app_settings SET setting_value = '3'
+WHERE setting_key = 'max_guest_uploads' AND setting_value = '10';
 
 INSERT INTO app_settings (setting_key, setting_value)
 SELECT 'image_access_ttl_hours', '24'

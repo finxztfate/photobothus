@@ -182,6 +182,7 @@ const Camera = forwardRef(function Camera(
     onVideoDimensionsChange = null,
     frameId = null,
     frameIndex = 0,
+    sharp = false,
   },
   ref
 ) {
@@ -395,7 +396,7 @@ const Camera = forwardRef(function Camera(
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: isFullscreen ? '0' : '20px',
+          borderRadius: isFullscreen || sharp ? '0' : '20px',
           objectFit,
           transform: mirrored ? 'scaleX(-1)' : 'none',
           filter: filters[selectedFilter] || filters.normal,

@@ -31,10 +31,10 @@ function EventPhotobooth() {
   const countdownRef = useRef(null);
   const capturingRef = useRef(false);
 
-  const layout = resolveLayoutId(searchParams.get('layout') || 1);
+  const captureOnly = event != null && !event.stripsEnabled;
+  const layout = captureOnly ? 3 : resolveLayoutId(searchParams.get('layout') || 1);
   const layoutMeta = getLayoutById(layout);
   const slotCount = getLayoutPhotoCount(layout);
-  const captureOnly = event?.stripsEnabled === false;
 
   const [scene, setScene] = useState('capture');
   const [capturedPhotos, setCapturedPhotos] = useState([]);
@@ -224,6 +224,7 @@ function EventPhotobooth() {
                   objectFit="cover"
                   deviceId={selectedCamera}
                   onError={setCameraError}
+                  sharp
                 />
                 {countdown != null && (
                   <div className="event-booth-countdown" aria-live="assertive">{countdown}</div>

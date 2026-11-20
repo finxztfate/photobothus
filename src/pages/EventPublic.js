@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest, getEventGuestKey } from '../utils/api';
 import { formatEventTimeRange, parseEventDate } from '../utils/eventSchedule';
+import { DEFAULT_MAX_GUEST_UPLOADS } from '../data/eventLimits';
 import './Gallery.css';
 import './EventEditor.css';
 
@@ -25,7 +26,7 @@ function EventPublic() {
   const [loading, setLoading] = useState(true);
   const [limitReached, setLimitReached] = useState(false);
   const [guestUploadCount, setGuestUploadCount] = useState(0);
-  const maxGuestUploads = 10;
+  const maxGuestUploads = Number(event?.maxGuestUploads) || DEFAULT_MAX_GUEST_UPLOADS;
 
   useEffect(() => {
     let cancelled = false;
@@ -142,6 +143,7 @@ function EventPublic() {
                   {event.stripsEnabled
                     ? 'Works best on your phone. Pick a layout → capture → edit → Upload.'
                     : 'Works best on your phone. Capture → edit → Upload to this event.'}
+                  {' '}Each guest can upload {maxGuestUploads} photos.
                 </p>
               </>
             )}

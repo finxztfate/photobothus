@@ -111,7 +111,7 @@ function App() {
               <Route path="/events" element={<SitePage className="page-home" {...navProps}><EventHostListPage /></SitePage>} />
               <Route path="/events/new" element={<SitePage className="page-home" {...navProps}><EventHostCreatePage /></SitePage>} />
               <Route path="/events/:id/edit" element={<SitePage className="page-home" {...navProps}><EventHostEditPage /></SitePage>} />
-              <Route path="/events/:id" element={<EventHostDetailPage {...navProps} />} />
+              <Route path="/events/:id" element={<SitePage className="page-home" {...navProps}><EventHostDetailPage /></SitePage>} />
 
               {/* Guest event flow — own shell + pages (not site navbar / normal booth) */}
               <Route path="/e/:code" element={<EventGuestShell />}>
@@ -163,28 +163,39 @@ function AppNavbar({ theme, toggleTheme }) {
   const navigate = useNavigate();
   const { user, isAuthenticated, isCustomer, isAdmin, logout, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const profileRef = useRef(null);
+  const profileName = user?.displayName || user?.email || 'Account';
+  const profileInitial = String(profileName).trim().charAt(0).toUpperCase() || 'A';
 
   useEffect(() => {
     setMenuOpen(false);
+    setProfileOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    if (!menuOpen) return undefined;
+    if (!menuOpen && !profileOpen) return undefined;
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        setProfileOpen(false);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [menuOpen]);
+  }, [menuOpen, profileOpen]);
 
-  const links = [
-    ...NAV_LINKS,
-    ...(isCustomer ? [
-      { to: '/events', label: 'Event Dashboard' },
-      { to: '/gallery', label: 'Gallery' },
-    ] : []),
-  ];
+  useEffect(() => {
+    if (!profileOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!profileRef.current?.contains(event.target)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [profileOpen]);
+
+  const links = NAV_LINKS;
 
   return (
     <header className={`navbar${menuOpen ? ' is-menu-open' : ''}`}>
@@ -210,14 +221,58 @@ function AppNavbar({ theme, toggleTheme }) {
           {!loading && (
             isAuthenticated ? (
               <>
-                <span className="nav-user">{user?.displayName || user?.email}</span>
-                <button
-                  type="button"
-                  className="nav-auth-btn"
-                  onClick={() => setConfirmLogout(true)}
-                >
-                  Log out
-                </button>
+                <div className="nav-profile" ref={profileRef}>
+                  <button
+                    type="button"
+                    className={`nav-profile-btn${profileOpen ? ' is-open' : ''}`}
+                    aria-expanded={profileOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setProfileOpen((open) => !open)}
+                  >
+                    {user?.avatarUrl ? (
+                      <img className="nav-profile-avatar" src={user.avatarUrl} alt="" />
+                    ) : (
+                      <span className="nav-profile-avatar nav-profile-avatar-fallback" aria-hidden="true">
+                        {profileInitial}
+                      </span>
+                    )}
+                    <span className="nav-profile-copy">
+                      <span className="nav-profile-name">{profileName}</span>
+                      <span className="nav-profile-hint">Signed in with Google</span>
+                    </span>
+                    <span className="nav-profile-caret" aria-hidden="true">▾</span>
+                  </button>
+                  {profileOpen && (
+                    <div className="nav-profile-menu" role="menu">
+                      <p className="nav-profile-menu-email">{user?.email}</p>
+                      {isCustomer && (
+                        <>
+                          <Link to="/events" role="menuitem" onClick={() => setProfileOpen(false)}>
+                            Event Dashboard
+                          </Link>
+                          <Link to="/gallery" role="menuitem" onClick={() => setProfileOpen(false)}>
+                            Gallery
+                          </Link>
+                        </>
+                      )}
+                      {isAdmin && (
+                        <Link to="/admin" role="menuitem" onClick={() => setProfileOpen(false)}>
+                          Admin
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          setConfirmLogout(true);
+                        }}
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {confirmLogout && (
                   <ConfirmModal
                     title="Log out?"

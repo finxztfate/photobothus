@@ -30,10 +30,12 @@ async function canAccessStripImage(strip, user, guestKey) {
   if (strip.user_id && strip.user_id === user.id) return true;
   if (strip.event_id) {
     const [events] = await pool.query(
-      'SELECT owner_id FROM events WHERE id = ? LIMIT 1',
+      'SELECT owner_id, is_active FROM events WHERE id = ? LIMIT 1',
       [strip.event_id]
     );
-    if (events.length && events[0].owner_id === user.id) return true;
+    if (events.length && events[0].owner_id === user.id) {
+      return !events[0].is_active;
+    }
   }
   return false;
 }
@@ -60,21 +62,6 @@ async function deleteEventPhotos(eventId) {
   return strips.length;
 }
 
-/** Closed events must not keep guest photos. The event record itself stays. */
-async function purgeClosedEventPhotos() {
-  const [events] = await pool.query(
-    `SELECT DISTINCT e.id
-     FROM events e
-     JOIN strips s ON s.event_id = e.id
-     WHERE e.is_active = 0`
-  );
-  let removed = 0;
-  for (const event of events) {
-    removed += await deleteEventPhotos(event.id);
-  }
-  return removed;
-}
-
 async function deleteEventAndFiles(id) {
   const [strips] = await pool.query('SELECT image_url FROM strips WHERE event_id = ?', [id]);
   const [result] = await pool.query('DELETE FROM events WHERE id = ?', [id]);
@@ -89,6 +76,5 @@ module.exports = {
   canAccessStripImage,
   deleteStripById,
   deleteEventPhotos,
-  purgeClosedEventPhotos,
   deleteEventAndFiles,
 };

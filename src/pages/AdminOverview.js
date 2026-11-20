@@ -76,8 +76,9 @@ function AdminOverview() {
   return (
     <div className="dash-page">
       <section className="dash-welcome">
-        <h1>HI, {String(firstName).toUpperCase()}</h1>
-        <p>Dashboard</p>
+        <p className="dash-kicker">Admin</p>
+        <h1>Hi, {firstName}</h1>
+        <p>Live events, customers, and revenue in one place.</p>
       </section>
 
       {error && <p className="admin-error">{error}</p>}

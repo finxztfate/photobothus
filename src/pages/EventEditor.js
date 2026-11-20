@@ -7,6 +7,7 @@ import { renderStripToCanvas, drawImageCover, getDefaultDatePosition, isLightBac
 import { customization } from '../utils/customization';
 import { uploadStrip, getEventGuestKey, apiRequest } from '../utils/api';
 import { trackDataAction } from '../utils/loadingBus';
+import { DEFAULT_MAX_GUEST_UPLOADS } from '../data/eventLimits';
 import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
@@ -131,7 +132,7 @@ function EventEditor() {
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [uploadsRemaining, setUploadsRemaining] = useState(null);
   const [guestUploadCount, setGuestUploadCount] = useState(0);
-  const maxGuestUploads = 10;
+  const [maxGuestUploads, setMaxGuestUploads] = useState(DEFAULT_MAX_GUEST_UPLOADS);
   const [isCaptureOnly, setIsCaptureOnly] = useState(captureOnly);
 
   const finishGuestSession = () => {
@@ -166,6 +167,9 @@ function EventEditor() {
           const count = Number(data.event.guestUploadCount || 0);
           setUploadsRemaining(remaining);
           setGuestUploadCount(count);
+          if (Number(data.event.maxGuestUploads) > 0) {
+            setMaxGuestUploads(Number(data.event.maxGuestUploads));
+          }
           if (remaining <= 0) {
             openLimitModal(count);
           }
@@ -176,7 +180,7 @@ function EventEditor() {
           }
         }
       } catch {
-        if (!cancelled) setUploadsRemaining(maxGuestUploads);
+        if (!cancelled) setUploadsRemaining(DEFAULT_MAX_GUEST_UPLOADS);
       }
     })();
     return () => {

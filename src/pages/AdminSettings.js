@@ -13,7 +13,7 @@ function AdminSettings() {
   const [savingSystem, setSavingSystem] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [system, setSystem] = useState({
-    maxGuestUploads: 10,
+    maxGuestUploads: 3,
     maxEventUploads: 500,
     imageAccessTtlHours: 24,
   });
@@ -145,8 +145,6 @@ function AdminSettings() {
               Event photo limit (all guests together)
               <input
                 type="number"
-                min="1"
-                max="10000"
                 value={system.maxEventUploads}
                 onChange={(e) =>
                   setSystem((s) => ({ ...s, maxEventUploads: e.target.value }))

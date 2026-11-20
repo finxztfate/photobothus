@@ -3,7 +3,7 @@ const yazl = require('yazl');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { generateEventCode, readStoredPhoto, extensionForMime } = require('../utils/upload');
-const { mapStripRows, deleteStripById, deleteEventPhotos, deleteEventAndFiles } = require('../utils/stripHelpers');
+const { mapStripRows, deleteStripById, deleteEventAndFiles } = require('../utils/stripHelpers');
 const { closeExpiredEventsQuietly, readInstant, toDateOnly } = require('../utils/eventSchedule');
 const { readPage, pageOf } = require('../utils/pagination');
 
@@ -214,11 +214,14 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/download', async (req, res) => {
   try {
     const [events] = await pool.query(
-      'SELECT id, name FROM events WHERE id = ? AND owner_id = ? LIMIT 1',
+      'SELECT id, name, is_active FROM events WHERE id = ? AND owner_id = ? LIMIT 1',
       [req.params.id, req.user.id]
     );
     if (!events.length) {
       return res.status(404).json({ error: 'Event not found' });
+    }
+    if (events[0].is_active) {
+      return res.status(403).json({ error: 'Guest photos can be viewed after the event ends.' });
     }
 
     const [rows] = await pool.query(
@@ -265,11 +268,14 @@ router.get('/:id/download', async (req, res) => {
 router.get('/:id/strips', async (req, res) => {
   try {
     const [events] = await pool.query(
-      'SELECT id FROM events WHERE id = ? AND owner_id = ? LIMIT 1',
+      'SELECT id, is_active FROM events WHERE id = ? AND owner_id = ? LIMIT 1',
       [req.params.id, req.user.id]
     );
     if (!events.length) {
       return res.status(404).json({ error: 'Event not found' });
+    }
+    if (events[0].is_active) {
+      return res.json({ strips: [], hasMore: false, nextCursor: null, photosLocked: true });
     }
 
     const { limit, before } = readPage(req.query);
@@ -344,12 +350,8 @@ router.patch('/:id', async (req, res) => {
       ]
     );
 
-    if (!isActive) {
-      await deleteEventPhotos(req.params.id);
-    }
-
     const [rows] = await pool.query(
-      `SELECT e.*, COUNT(s.id) AS strip_count
+      `SELECT e.*, COUNT(s.id) AS strip_count, COUNT(DISTINCT s.guest_key) AS guest_count
        FROM events e
        LEFT JOIN strips s ON s.event_id = e.id
        WHERE e.id = ?

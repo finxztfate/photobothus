@@ -4,6 +4,8 @@ import { apiRequest } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import { buildSchedule } from '../../../utils/eventSchedule';
 import EventScheduleFields from './components/EventScheduleFields';
+import { DEFAULT_MAX_GUEST_UPLOADS } from '../../../data/eventLimits';
+import { EventHostDashLayout } from './components/EventHostSidebar';
 import '../../AuthPages.css';
 
 function EventHostCreatePage() {
@@ -62,10 +64,16 @@ function EventHostCreatePage() {
   };
 
   return (
+    <EventHostDashLayout>
     <div className="auth-page">
-      <form className="auth-card auth-card-wide" onSubmit={handleSubmit}>
-        <h1>New Event</h1>
-        <p className="auth-subtitle">Set event details for your guests and QR landing page.</p>
+      <form className="auth-card auth-card-wide event-details-card" onSubmit={handleSubmit}>
+        <p className="auth-kicker">Event dashboard</p>
+        <h1>New event</h1>
+        <p className="auth-subtitle">Details guests see on the QR landing page and booth.</p>
+        <p className="auth-hint">
+          Each guest can upload {DEFAULT_MAX_GUEST_UPLOADS} photos to this event. Extra uploads are blocked.
+          Guest photos stay hidden until the event ends.
+        </p>
         {error && <p className="auth-error">{error}</p>}
 
         <label>
@@ -98,14 +106,14 @@ function EventHostCreatePage() {
           />
         </label>
 
-        <label>
+        <label className="event-details-span">
           Welcome message for guests
           <textarea
             value={form.welcomeMessage}
             onChange={update('welcomeMessage')}
             rows={3}
             placeholder="Welcome! Strike a pose and share your favorite moments with us."
-          />
+          ></textarea>
         </label>
 
         <label>
@@ -123,7 +131,7 @@ function EventHostCreatePage() {
             checked={form.stripsEnabled}
             onChange={(e) => setForm((prev) => ({ ...prev, stripsEnabled: e.target.checked }))}
           />
-          <span>Enable photo strips (optional). Off = single photo only.</span>
+          <span>Enable photo strips</span>
         </label>
 
         <button type="submit" disabled={submitting}>
@@ -131,6 +139,7 @@ function EventHostCreatePage() {
         </button>
       </form>
     </div>
+    </EventHostDashLayout>
   );
 }
 

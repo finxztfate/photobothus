@@ -1,26 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { apiRequest, downloadFile } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
-import EventHostShell from './components/EventHostShell';
+import { EventHostDashLayout } from './components/EventHostSidebar';
 import EventHostWelcomeBar from './components/EventHostWelcomeBar';
 import EventHostStatsGrid from './components/EventHostStatsGrid';
 import EventHostShareQrPanel from './components/EventHostShareQrPanel';
 import EventHostGallery from './components/EventHostGallery';
 import './EventHostDetailPage.css';
 
-function EventHostDetailPage({ theme, toggleTheme }) {
+function EventHostDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { isAuthenticated, isCustomer, loading, logout, user } = useAuth();
+  const { isAuthenticated, isCustomer, loading } = useAuth();
   const [event, setEvent] = useState(null);
   const [strips, setStrips] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [showShare, setShowShare] = useState(false);
-  const [activeTab, setActiveTab] = useState('gallery');
   const [removingId, setRemovingId] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -73,13 +70,6 @@ function EventHostDetailPage({ theme, toggleTheme }) {
   };
 
   useEffect(() => {
-    if (event && !event.isActive) {
-      setShowShare(false);
-      setActiveTab((tab) => (tab === 'share' ? 'gallery' : tab));
-    }
-  }, [event]);
-
-  useEffect(() => {
     if (!isAuthenticated || !isCustomer) return;
     let cancelled = false;
     (async () => {
@@ -100,15 +90,14 @@ function EventHostDetailPage({ theme, toggleTheme }) {
     };
   }, [isAuthenticated, isCustomer, load]);
 
-  const toggleActive = async () => {
+  const patchEvent = async (body) => {
     if (!event) return;
     setBusy(true);
     try {
       const data = await apiRequest(`/api/events/${id}`, {
         method: 'PATCH',
-        body: { isActive: !event.isActive },
+        body,
       });
-      // The reply has no guest total, so keep the one already shown.
       setEvent((prev) => ({ ...prev, ...data.event }));
     } catch (err) {
       setError(err.message);
@@ -116,6 +105,10 @@ function EventHostDetailPage({ theme, toggleTheme }) {
       setBusy(false);
     }
   };
+
+  const toggleActive = () => patchEvent({ isActive: !event.isActive });
+
+  const toggleStrips = () => patchEvent({ stripsEnabled: !event.stripsEnabled });
 
   const copyLink = async () => {
     try {
@@ -128,7 +121,7 @@ function EventHostDetailPage({ theme, toggleTheme }) {
   };
 
   const downloadAll = async () => {
-    if (!stripCount) return;
+    if (!stripCount || event?.isActive) return;
     setDownloading(true);
     setError('');
     try {
@@ -164,32 +157,22 @@ function EventHostDetailPage({ theme, toggleTheme }) {
 
   if (loading) {
     return (
-      <EventHostShell theme={theme} toggleTheme={toggleTheme}>
-        <div className="event-host-loading-state">
-          <div className="event-host-spinner" />
-          <p>Loading event dashboard…</p>
+      <EventHostDashLayout>
+        <div className="event-host-main">
+          <div className="event-host-loading-state">
+            <div className="event-host-spinner" />
+            <p>Loading event dashboard…</p>
+          </div>
         </div>
-      </EventHostShell>
+      </EventHostDashLayout>
     );
   }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isCustomer) return <Navigate to="/admin" replace />;
 
   return (
-    <EventHostShell
-      event={event}
-      userEmail={user?.email}
-      showShare={showShare}
-      onToggleShare={() => setShowShare((v) => !v)}
-      onLogout={() => {
-        logout();
-        navigate('/login');
-      }}
-      theme={theme}
-      toggleTheme={toggleTheme}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-    >
+    <EventHostDashLayout>
+      <div className="event-host-main">
       {error && <div className="event-host-toast error">{error}</div>}
 
       {!event ? (
@@ -205,6 +188,7 @@ function EventHostDetailPage({ theme, toggleTheme }) {
             busy={busy}
             onCopyLink={copyLink}
             onToggleActive={toggleActive}
+            onToggleStrips={toggleStrips}
           />
 
           <EventHostStatsGrid
@@ -213,50 +197,25 @@ function EventHostDetailPage({ theme, toggleTheme }) {
             guestCount={guestCount}
           />
 
-          <div className="event-host-tabs">
-            <button
-              type="button"
-              className={`event-host-tab ${activeTab === 'gallery' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('gallery')}
-            >
-              <span className="event-host-tab-icon" aria-hidden="true">📷</span>
-              <span>Gallery</span>
-              <span className="event-host-tab-count">{stripCount}</span>
-            </button>
-            {event.isActive && (
-              <button
-                type="button"
-                className={`event-host-tab ${activeTab === 'share' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('share')}
-              >
-                <span className="event-host-tab-icon" aria-hidden="true">🔗</span>
-                <span>Share</span>
-              </button>
-            )}
-          </div>
-
-          <div key={activeTab} className="page-fade">
-          {activeTab === 'gallery' && (
-            <EventHostGallery
-              strips={strips}
-              total={stripCount}
-              loadingMore={loadingMore}
-              onLoadMore={loadMore}
-              downloading={downloading}
-              onDownloadAll={downloadAll}
-              onRemove={removeStrip}
-              removingId={removingId}
-              closed={!event.isActive}
-            />
-          )}
-
-          {event.isActive && activeTab === 'share' && (
+          {event.isActive && (
             <EventHostShareQrPanel eventUrl={eventUrl} event={event} />
           )}
-          </div>
+
+          <EventHostGallery
+            strips={strips}
+            total={stripCount}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            downloading={downloading}
+            onDownloadAll={downloadAll}
+            onRemove={removeStrip}
+            removingId={removingId}
+            locked={event.isActive}
+          />
         </div>
       )}
-    </EventHostShell>
+      </div>
+    </EventHostDashLayout>
   );
 }
 

@@ -83,9 +83,17 @@ test('an event closes itself at its end time and stays closed', async () => {
   const guest = await app.api('GET', `/api/public/events/${event.code}`);
   assert.equal(guest.status, 200);
   assert.equal(guest.body.event.isActive, false);
-  assert.equal(app.db.tables.strips.some((strip) => strip.id === photo.id), false);
-  assert.equal(fs.existsSync(path.join(app.uploadsDir, 'auto-closed.png')), false);
+  assert.equal(app.db.tables.strips.some((strip) => strip.id === photo.id), true);
+  assert.equal(fs.existsSync(path.join(app.uploadsDir, 'auto-closed.png')), true);
   assert.equal((await app.guestUpload(event.code, 'guestkey-1234')).status, 403);
+
+  const locked = await app.api('GET', `/api/events/${untouched.id}/strips`, { as: host });
+  assert.equal(locked.body.photosLocked, true);
+  assert.deepEqual(locked.body.strips, []);
+
+  const revealed = await app.api('GET', `/api/events/${event.id}/strips`, { as: host });
+  assert.equal(revealed.body.photosLocked, undefined);
+  assert.equal(revealed.body.strips.length, 1);
 
   const hostView = await app.api('GET', `/api/events/${event.id}`, { as: host });
   assert.deepEqual(
@@ -112,10 +120,10 @@ test('ending by hand is permanent', async () => {
 
   const ended = await app.api('PATCH', `/api/events/${id}`, { as: host, body: { isActive: false } });
   assert.equal(ended.body.event.isActive, false);
-  assert.equal(ended.body.event.stripCount, 0);
+  assert.equal(ended.body.event.stripCount, 1);
   assert.ok(ended.body.event.completedAt);
-  assert.equal(app.db.tables.strips.some((strip) => strip.id === photo.id), false);
-  assert.equal(fs.existsSync(path.join(app.uploadsDir, 'ended-event.png')), false);
+  assert.equal(app.db.tables.strips.some((strip) => strip.id === photo.id), true);
+  assert.equal(fs.existsSync(path.join(app.uploadsDir, 'ended-event.png')), true);
 
   const reopened = await app.api('PATCH', `/api/events/${id}`, { as: host, body: { isActive: true } });
   assert.equal(reopened.status, 400);
@@ -160,4 +168,28 @@ test('only the owner can delete an event, and its photos go with it', async () =
 
   assert.ok(app.db.tables.strips.some((s) => s.id === keptPhoto.id));
   assert.ok(fs.existsSync(path.join(app.uploadsDir, 'kept.png')));
+});
+
+test('photo strips stay off until the host turns them on', async () => {
+  const created = await app.api('POST', '/api/events', { as: host, body: { name: 'Photos only' } });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.event.stripsEnabled, false);
+  const { id, code } = created.body.event;
+
+  const guestOff = await app.api('GET', `/api/public/events/${code}`);
+  assert.equal(guestOff.body.event.stripsEnabled, false);
+
+  const enabled = await app.api('PATCH', `/api/events/${id}`, {
+    as: host,
+    body: { name: 'Photos only', stripsEnabled: true },
+  });
+  assert.equal(enabled.status, 200);
+  assert.equal(enabled.body.event.stripsEnabled, true);
+  assert.equal((await app.api('GET', `/api/public/events/${code}`)).body.event.stripsEnabled, true);
+
+  const disabled = await app.api('PATCH', `/api/events/${id}`, {
+    as: host,
+    body: { name: 'Photos only', stripsEnabled: false },
+  });
+  assert.equal(disabled.body.event.stripsEnabled, false);
 });

@@ -1,7 +1,7 @@
 const { pool } = require('../db');
 
 const DEFAULTS = {
-  max_guest_uploads: '10',
+  max_guest_uploads: '3',
   max_event_uploads: '500',
   image_access_ttl_hours: '24',
 };

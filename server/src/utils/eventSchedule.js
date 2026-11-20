@@ -1,5 +1,4 @@
 const { pool } = require('../db');
-const { purgeClosedEventPhotos } = require('./stripHelpers');
 
 // Times are compared against a Date supplied by Node rather than MySQL's NOW(),
 // so the comparison uses the same clock and timezone the values were written with.
@@ -15,8 +14,6 @@ async function closeExpiredEvents(now = new Date()) {
      WHERE is_active = 1 AND ends_at IS NOT NULL AND ends_at <= ?`,
     [now]
   );
-  // A closed event no longer keeps its photos in the database or on disk.
-  await purgeClosedEventPhotos();
   return result.affectedRows || 0;
 }
 

@@ -55,7 +55,7 @@ function zipEntryNames(buffer) {
 // ---- pagination
 
 test('an event gallery is paged newest first, with no gaps or repeats', async () => {
-  const event = app.db.addEvent({ owner_id: host.id, name: 'Big event' });
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Big event', is_active: 0 });
   const ids = [];
   for (let i = 0; i < 7; i += 1) {
     ids.push(app.db.addStrip({ event_id: event.id, guest_key: `guest-${i % 3}` }).id);
@@ -74,7 +74,7 @@ test('an event gallery is paged newest first, with no gaps or repeats', async ()
 });
 
 test('page size has a default and a ceiling', async () => {
-  const event = app.db.addEvent({ owner_id: host.id, name: 'Huge event' });
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Huge event', is_active: 0 });
   for (let i = 0; i < 130; i += 1) app.db.addStrip({ event_id: event.id });
   const url = `/api/events/${event.id}/strips`;
 
@@ -122,6 +122,21 @@ test('an admin cannot list or delete customer strips', async () => {
   assert.ok(app.db.tables.strips.some((row) => row.id === strip.id));
 });
 
+test('a guest is stopped after 3 uploads to the same event', async () => {
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Guest cap' });
+  const key = 'guest-threelimit';
+  assert.equal((await app.guestUpload(event.code, key)).status, 201);
+  assert.equal((await app.guestUpload(event.code, key)).status, 201);
+  const third = await app.guestUpload(event.code, key);
+  assert.equal(third.status, 201);
+  assert.equal(third.body.uploadsRemaining, 0);
+  assert.equal(third.body.maxGuestUploads, 3);
+
+  const refused = await app.guestUpload(event.code, key);
+  assert.equal(refused.status, 403);
+  assert.match(refused.body.error, /3 photos/);
+});
+
 // ---- per-event photo cap
 
 test('an event stops accepting photos at the event limit, whatever guest key is sent', async () => {
@@ -129,7 +144,7 @@ test('an event stops accepting photos at the event limit, whatever guest key is 
   assert.equal(saved.body.settings.maxEventUploads, 3);
   const event = app.db.addEvent({ owner_id: host.id, name: 'Small event' });
 
-  // Three different "guests": the per-guest limit of 10 never comes into play.
+  // Three different "guests": the per-guest limit of 3 never comes into play.
   for (const key of ['guest-aaaaaaaa', 'guest-bbbbbbbb', 'guest-cccccccc']) {
     assert.equal((await app.guestUpload(event.code, key)).status, 201);
   }
@@ -159,8 +174,16 @@ test('the event limit must be a sensible number', async () => {
 
 // ---- download all as one ZIP
 
+test('Download All is blocked while the event is live', async () => {
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Still going' });
+  app.db.addStrip({ event_id: event.id, image_url: app.storeFile('live.png') });
+  const live = await app.api('GET', `/api/events/${event.id}/download`, { as: host });
+  assert.equal(live.status, 403);
+  assert.match(live.body.error, /after the event ends/i);
+});
+
 test('Download All sends every photo of the event as one ZIP', async () => {
-  const event = app.db.addEvent({ owner_id: host.id, name: 'Ana & Marco Wedding' });
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Ana & Marco Wedding', is_active: 0 });
   app.db.addStrip({ event_id: event.id, title: 'Classic Strip', image_url: app.storeFile('zip-a.png') });
   app.db.addStrip({ event_id: event.id, title: null, image_url: app.storeFile('zip-b.jpg') });
   app.db.addStrip({ event_id: event.id, title: 'lost file', image_url: 'never-saved.png' });
@@ -180,7 +203,7 @@ test('Download All sends every photo of the event as one ZIP', async () => {
 });
 
 test('Download All is owner-only and says so when there is nothing to send', async () => {
-  const event = app.db.addEvent({ owner_id: host.id, name: 'Empty' });
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Empty', is_active: 0 });
   assert.equal((await app.api('GET', `/api/events/${event.id}/download`, { as: otherHost })).status, 404);
   assert.equal((await app.api('GET', `/api/events/${event.id}/download`)).status, 401);
 

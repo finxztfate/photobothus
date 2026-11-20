@@ -92,7 +92,9 @@ function EventGuestShell() {
             <NavLink to={`/e/${code}/layouts`}>Layouts</NavLink>
           )}
           {!closed && (
-            <NavLink to={`/e/${code}/photobooth`}>Booth</NavLink>
+            <NavLink to={stripsEnabled ? `/e/${code}/photobooth` : `/e/${code}/photobooth?layout=3`}>
+              Booth
+            </NavLink>
           )}
           {onEditor && (
             <NavLink to={`/e/${code}/editor`}>Editor</NavLink>

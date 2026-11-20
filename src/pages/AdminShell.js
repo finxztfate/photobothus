@@ -108,7 +108,7 @@ function AdminShell({ theme = 'dark', toggleTheme }) {
           className={`admin-aside${menuOpen ? ' is-open' : ''}`}
           aria-label="Admin navigation"
         >
-          <p className="admin-aside-label">Menu</p>
+          <p className="admin-aside-label">Admin</p>
           <nav className="admin-aside-nav">
             {NAV.map((item) => (
               <NavLink

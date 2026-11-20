@@ -7,35 +7,41 @@ function EventHostGallery({
   onDownloadAll,
   onRemove,
   removingId,
-  closed = false,
+  locked = false,
 }) {
-  const hasMore = strips.length < total;
+  const hasMore = !locked && strips.length < total;
 
   return (
     <section className="event-host-gallery">
       <div className="event-host-gallery-bar">
         <div className="event-host-gallery-titles">
-          <h2>Live Event Gallery</h2>
+          <h2>{locked ? 'Guest photos' : 'Event gallery'}</h2>
           <span>
-            showing {strips.length} of {total} photo{total === 1 ? '' : 's'}
+            {locked
+              ? `${total} photo${total === 1 ? '' : 's'} collected · hidden until the event ends`
+              : `showing ${strips.length} of ${total} photo${total === 1 ? '' : 's'}`}
           </span>
         </div>
         <button
           type="button"
-          className="event-host-download"
+          className={`event-host-btn${locked || !total ? '' : ' primary'}`}
           onClick={onDownloadAll}
-          disabled={!total || downloading}
+          disabled={locked || !total || downloading}
         >
-          {downloading ? 'Preparing ZIP…' : 'Download All'}
+          {downloading ? 'Preparing ZIP…' : 'Download all'}
         </button>
       </div>
 
-      {strips.length === 0 ? (
+      {locked ? (
         <div className="event-host-gallery-empty">
-          {closed ? (
+          <p>Guest photos stay hidden while the event is live.</p>
+          <p>End the event to review, download, and share them.</p>
+        </div>
+      ) : strips.length === 0 ? (
+        <div className="event-host-gallery-empty">
+          {total > 0 ? (
             <>
-              <p>Photos from this event were deleted when it closed.</p>
-              <p>They are no longer stored.</p>
+              <p>No guest photos to show yet.</p>
             </>
           ) : (
             <>
