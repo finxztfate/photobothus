@@ -61,12 +61,14 @@ export async function captureNativeFrame(
 }
 
 /**
- * Capture at booth aspect with center crop — matches the booth preview (object-fit: cover).
+ * Capture at booth aspect. `cover` center-crops (object-fit: cover).
+ * `contain` fits the whole camera frame (object-fit: contain).
  */
 export async function captureBoothFrame(
   videoEl,
   {
     aspect = getBoothCaptureAspect(),
+    fit = 'cover',
     filterCss = 'none',
     mirrored = false,
     overlayCanvas = null,
@@ -75,6 +77,7 @@ export async function captureBoothFrame(
     maxWidth = 1920,
     mimeType = 'image/png',
     quality = 0.95,
+    letterbox = '#111111',
   } = {}
 ) {
   if (!videoEl) return null;
@@ -94,38 +97,58 @@ export async function captureBoothFrame(
   if (!ctx) return null;
 
   const sourceAspect = sourceWidth / sourceHeight;
-  let sx;
-  let sy;
-  let sw;
-  let sh;
-
-  if (sourceAspect > aspect) {
-    sh = sourceHeight;
-    sw = sh * aspect;
-    sx = (sourceWidth - sw) / 2;
-    sy = 0;
-  } else {
-    sw = sourceWidth;
-    sh = sw / aspect;
-    sx = 0;
-    sy = (sourceHeight - sh) / 2;
-  }
 
   if (mirrored) {
     ctx.translate(outputWidth, 0);
     ctx.scale(-1, 1);
   }
 
-  ctx.filter = filterCss && filterCss !== 'none' ? filterCss : 'none';
-  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
-
-  if (mirrored) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }
-
-  if (overlayCanvas?.width && overlayCanvas?.height) {
-    ctx.filter = 'none';
-    ctx.drawImage(overlayCanvas, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
+  if (fit === 'contain') {
+    ctx.fillStyle = letterbox;
+    ctx.fillRect(0, 0, outputWidth, outputHeight);
+    ctx.filter = filterCss && filterCss !== 'none' ? filterCss : 'none';
+    let dw;
+    let dh;
+    let dx;
+    let dy;
+    if (sourceAspect > aspect) {
+      dw = outputWidth;
+      dh = outputWidth / sourceAspect;
+      dx = 0;
+      dy = (outputHeight - dh) / 2;
+    } else {
+      dh = outputHeight;
+      dw = outputHeight * sourceAspect;
+      dx = (outputWidth - dw) / 2;
+      dy = 0;
+    }
+    ctx.drawImage(videoEl, 0, 0, sourceWidth, sourceHeight, dx, dy, dw, dh);
+    if (overlayCanvas?.width && overlayCanvas?.height) {
+      ctx.filter = 'none';
+      ctx.drawImage(overlayCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height, dx, dy, dw, dh);
+    }
+  } else {
+    let sx;
+    let sy;
+    let sw;
+    let sh;
+    if (sourceAspect > aspect) {
+      sh = sourceHeight;
+      sw = sh * aspect;
+      sx = (sourceWidth - sw) / 2;
+      sy = 0;
+    } else {
+      sw = sourceWidth;
+      sh = sw / aspect;
+      sx = 0;
+      sy = (sourceHeight - sh) / 2;
+    }
+    ctx.filter = filterCss && filterCss !== 'none' ? filterCss : 'none';
+    ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
+    if (overlayCanvas?.width && overlayCanvas?.height) {
+      ctx.filter = 'none';
+      ctx.drawImage(overlayCanvas, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
+    }
   }
 
   if (settleMs > 0) await delay(settleMs);

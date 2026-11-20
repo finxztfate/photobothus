@@ -729,12 +729,12 @@ function EventEditor() {
             <button className="edit-close" onClick={handleClose}>Back to booth</button>
           </div>
         </header>
-        <p style={{ textAlign: 'center', color: '#6b668c', margin: '10px 0 0', fontSize: '0.92rem' }}>
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: '10px 0 0', fontSize: '0.92rem' }}>
           No strips — pick a photo to upload to the event.
           {' '}Up to <strong>{maxGuestUploads}</strong> uploads
           {uploadsRemaining != null ? ` (${uploadsRemaining} left)` : ''}.
         </p>
-        {saveMessage && <p style={{ textAlign: 'center', color: '#5c34e0', margin: '8px 0 0' }}>{saveMessage}</p>}
+        {saveMessage && <p style={{ textAlign: 'center', color: 'var(--accent-text)', margin: '8px 0 0' }}>{saveMessage}</p>}
         {error && <p style={{ textAlign: 'center', color: '#d54b4b', margin: '8px 0 0' }}>{error}</p>}
 
         {isUploadModalOpen && (

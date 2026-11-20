@@ -242,7 +242,7 @@ export async function renderStripToCanvas({
   customBorder = '#000000',
   showDate = false,
   dateSize = 12,
-  dateColor = '#7c6faa',
+  dateColor = '#E8A33D',
   datePlacement,
   dateFont = '"Special Elite", cursive',
   datePosition,

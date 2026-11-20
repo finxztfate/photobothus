@@ -88,8 +88,11 @@
 }
 
 .gallery-empty a,
+.gallery-empty a:visited,
 .events-empty a,
-.events-actions a {
+.events-empty a:visited,
+.events-actions a,
+.events-actions a:visited {
   color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;

@@ -238,9 +238,8 @@ const Camera = forwardRef(function Camera(
     const portrait = orientation === 'portrait';
     const constraints = portrait
       ? {
-          width: { ideal: 960 },
-          height: { ideal: 1280 },
-          aspectRatio: { ideal: 3 / 4 },
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
         }
       : {
           width: { ideal: 1280 },

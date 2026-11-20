@@ -85,6 +85,7 @@ function EventPhotobooth() {
     try {
       const dataUrl = await cameraRef.current.captureBooth({
         aspect: VIEWFINDER_ASPECT,
+        fit: 'contain',
         mirrored: false,
         settleMs: 50,
       });
@@ -221,7 +222,7 @@ function EventPhotobooth() {
                   selectedFilter={selectedFilter}
                   mirrored
                   orientation="portrait"
-                  objectFit="cover"
+                  objectFit="contain"
                   deviceId={selectedCamera}
                   onError={setCameraError}
                   sharp

@@ -23,7 +23,8 @@
   color: var(--text-body);
 }
 
-.event-guest-closed a {
+.event-guest-closed a,
+.event-guest-closed a:visited {
   color: var(--accent-text);
 }
 
@@ -50,7 +51,8 @@
   min-width: 0;
 }
 
-.event-guest-nav-title {
+.event-guest-nav-title,
+.event-guest-nav-title:visited {
   font-family: var(--font-heading);
   color: var(--nav-text);
   text-decoration: none;
@@ -99,7 +101,12 @@
   box-shadow: inset 0 -2px 0 transparent;
 }
 
-.event-guest-nav-links a.active {
+.event-guest-nav-links a:visited {
+  color: var(--nav-text);
+}
+
+.event-guest-nav-links a.active,
+.event-guest-nav-links a.active:visited {
   background: transparent;
   color: #fff;
   box-shadow: inset 0 -2px 0 var(--accent);
