@@ -183,8 +183,8 @@ function MyGallery() {
     return (
       <div className="gallery-page">
         <div className="gallery-empty">
-          <h1>My Gallery</h1>
-          <p>Log in to see strips saved to your account.</p>
+          <h1>Your account</h1>
+          <p>Log in to see strips saved to your Photobothus account.</p>
           <Link to="/login">Log in</Link>
         </div>
       </div>
@@ -194,8 +194,8 @@ function MyGallery() {
   return (
     <div className="gallery-page">
       <header className="gallery-header">
-        <h1>My Gallery</h1>
-        <p>Strips saved to your account (not tied to an event).</p>
+        <h1>Your account</h1>
+        <p>Strips saved to Photobothus — not your phone’s camera roll or Photos app.</p>
       </header>
       {error && <p className="gallery-error">{error}</p>}
       {strips.length > 0 && (
@@ -222,7 +222,12 @@ function MyGallery() {
       )}
       {strips.length === 0 ? (
         <div className="gallery-empty">
-          <p>No saved strips yet.</p>
+          <p>No strips saved to your account yet.</p>
+          <p>
+            Download only stores a file on this device. Use <strong>Save to account</strong> in
+            the editor after you take photos. Event booth uploads show on the Event Dashboard,
+            not here.
+          </p>
           <Link to="/layouts">Start Photobooth</Link>
         </div>
       ) : (

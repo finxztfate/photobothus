@@ -107,7 +107,7 @@ function EditPage() {
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const savedTimerRef = useRef(null);
-  // Signed-in customers can also keep the strip in their account gallery.
+  // Signed-in customers can also keep the strip in their Photobothus account.
   const { isCustomer } = useAuth();
   const [isSavingToGallery, setIsSavingToGallery] = useState(false);
   const [justSavedToGallery, setJustSavedToGallery] = useState(false);
@@ -342,7 +342,7 @@ function EditPage() {
       window.clearTimeout(galleryTimerRef.current);
       galleryTimerRef.current = window.setTimeout(() => setJustSavedToGallery(false), 2200);
     } catch (err) {
-      setError(err.message || 'Could not save to your gallery');
+      setError(err.message || 'Could not save to your account');
     } finally {
       setIsSavingToGallery(false);
     }
@@ -656,16 +656,16 @@ function EditPage() {
                 >
                   <IconGallery />
                   {justSavedToGallery
-                    ? 'Saved to gallery'
+                    ? 'Saved to your account'
                     : isSavingToGallery
                       ? 'Saving…'
-                      : 'Save to gallery'}
+                      : 'Save to account'}
                 </button>
               )}
             </div>
             <p className="edit-actions-note">
               {isCustomer
-                ? 'Your photos stay on this device unless you save them to your gallery.'
+                ? 'Download stays on this device. Save to account keeps the strip in Photobothus.'
                 : 'Your photos stay private on this device.'}
             </p>
           </div>

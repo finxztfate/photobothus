@@ -28,7 +28,7 @@ const FAQS = [
     answer: (
       <p>
         No. Photos taken in the booth are processed right in your browser and stay on your
-        device. They only leave it if you choose to save a strip to your account gallery or
+        device. They only leave it if you choose to save a strip to your Photobothus account or
         upload it to an event booth.
       </p>
     ),

@@ -90,7 +90,7 @@ function Spotlight() {
         <section className="spot-empty">
           <p>No photo of the week yet.</p>
           <p>
-            <Link to="/gallery">Save a strip to My Gallery</Link> and allow it on Spotlight.
+            <Link to="/gallery">Save a strip to your account</Link> and allow it on Spotlight.
           </p>
         </section>
       ) : (

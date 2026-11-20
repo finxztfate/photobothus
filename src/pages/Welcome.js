@@ -63,7 +63,7 @@ function Welcome() {
         <p className="welcome-eyebrow">Account created</p>
         <h1>Welcome, {name}</h1>
         <p className="welcome-copy">
-          Your Photobothus account is ready. Strips you save, events you host, and your gallery
+          Your Photobothus account is ready. Strips you save, events you host, and your account
           all live here from now on.
         </p>
         <button type="button" className="welcome-continue" onClick={goHome} disabled={leaving}>
