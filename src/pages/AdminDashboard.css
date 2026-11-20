@@ -150,14 +150,9 @@
   gap: 14px;
 }
 
-.admin-topbar-logout {
-  border: none;
-  background: transparent;
+.admin-topbar .nav-profile-name,
+.admin-topbar .nav-profile-hint {
   color: var(--nav-text);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
 }
 
 .admin-body {
@@ -172,14 +167,15 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 40px 18px 40px 28px;
+  padding: 22px 14px 24px 16px;
+  margin: 20px 8px 24px 16px;
   background: transparent;
   border: none;
   box-shadow: none;
   position: sticky;
-  top: 0;
+  top: 16px;
   align-self: flex-start;
-  min-height: calc(100vh - 160px);
+  min-height: 0;
 }
 
 .admin-aside-label {
@@ -478,7 +474,7 @@
 
 .dash-welcome {
   border-radius: 0;
-  padding: 8px 0 28px;
+  padding: 20px 22px;
   min-height: 0;
   margin-bottom: 8px;
   display: flex;
@@ -523,10 +519,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 8px 32px;
-  padding-bottom: 28px;
-  margin-bottom: 12px;
-  box-shadow: inset 0 -1px 0 var(--border-soft);
+  gap: 16px;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  box-shadow: none;
 }
 
 .dash-kpi-grid .dash-stat-card:not(.dash-stat-featured) {
@@ -572,7 +568,7 @@
 
 .dash-card {
   border-radius: 0;
-  padding: 8px 0 20px;
+  padding: 18px 20px;
   min-width: 0;
   border: none;
   background: transparent;
@@ -728,7 +724,7 @@
 
 .dash-panel {
   border-radius: 0;
-  padding: 8px 0 20px;
+  padding: 18px 20px;
   min-width: 0;
   min-height: 0;
   border: none;
@@ -887,6 +883,22 @@
   cursor: not-allowed;
 }
 
+.admin-shell .admin-aside,
+.admin-shell .dash-welcome,
+.admin-shell .admin-header,
+.admin-shell .dash-card,
+.admin-shell .dash-panel {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
+    var(--admin-outline) border-box;
+  border-radius: 16px;
+}
+
+.admin-shell .admin-header {
+  padding: 20px 22px;
+}
+
 @media (max-width: 1100px) {
   .admin-body {
     grid-template-columns: 200px minmax(0, 1fr);
@@ -944,9 +956,13 @@
     z-index: 100;
     width: min(288px, 88vw);
     min-height: 100dvh;
+    margin: 0;
     padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
-    background: var(--bg-primary);
-    border: none;
+    background:
+      linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
+      var(--admin-outline) border-box;
+    border: 1.5px solid transparent;
+    border-radius: 0 16px 16px 0;
     box-shadow: 8px 0 32px rgba(26, 16, 10, 0.28);
     transform: translateX(-105%);
     transition: transform 0.24s ease;
@@ -999,9 +1015,7 @@
 
   .dash-welcome {
     min-height: auto;
-    padding: 8px 0 20px;
-    border: none;
-    border-radius: 0;
+    padding: 16px 16px;
   }
 
   .dash-welcome h1 {
@@ -1009,10 +1023,9 @@
   }
 
   .dash-card,
-  .dash-panel {
-    border: none;
-    border-radius: 0;
-    padding: 8px 0 16px;
+  .dash-panel,
+  .admin-header {
+    padding: 16px 16px;
   }
 
   .dash-kpi-grid {
@@ -1236,10 +1249,8 @@
     flex-shrink: 0;
   }
 
-  .admin-topbar-logout {
-    font-size: 0.85rem;
-    min-height: 44px;
-    padding: 0 4px;
+  .admin-topbar .nav-profile-copy {
+    display: none;
   }
 
   .admin-main {

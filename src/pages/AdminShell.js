@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/auth';
 import ThemeToggle from '../components/ThemeToggle';
@@ -20,11 +20,32 @@ function AdminShell({ theme = 'dark', toggleTheme }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const profileRef = useRef(null);
+  const profileName = user?.displayName || user?.email || 'Admin';
+  const profileInitial = String(profileName).trim().charAt(0).toUpperCase() || 'A';
 
   useEffect(() => {
     setMenuOpen(false);
+    setProfileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!profileOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!profileRef.current?.contains(event.target)) setProfileOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [profileOpen]);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : '';
@@ -71,13 +92,46 @@ function AdminShell({ theme = 'dark', toggleTheme }) {
         </div>
         <div className="admin-topbar-actions">
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-          <button
-            type="button"
-            className="admin-topbar-logout"
-            onClick={() => setConfirmLogout(true)}
-          >
-            Log out
-          </button>
+          <div className="nav-profile" ref={profileRef}>
+            <button
+              type="button"
+              className={`nav-profile-btn${profileOpen ? ' is-open' : ''}`}
+              aria-expanded={profileOpen}
+              aria-haspopup="menu"
+              onClick={() => setProfileOpen((open) => !open)}
+            >
+              {user?.avatarUrl ? (
+                <img className="nav-profile-avatar" src={user.avatarUrl} alt="" />
+              ) : (
+                <span className="nav-profile-avatar nav-profile-avatar-fallback" aria-hidden="true">
+                  {profileInitial}
+                </span>
+              )}
+              <span className="nav-profile-copy">
+                <span className="nav-profile-name">{profileName}</span>
+                <span className="nav-profile-hint">Admin</span>
+              </span>
+              <span className="nav-profile-caret" aria-hidden="true">▾</span>
+            </button>
+            {profileOpen && (
+              <div className="nav-profile-menu" role="menu">
+                {user?.email ? <p className="nav-profile-menu-email">{user.email}</p> : null}
+                <Link to="/admin/settings" role="menuitem" onClick={() => setProfileOpen(false)}>
+                  Settings
+                </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setConfirmLogout(true);
+                  }}
+                >
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
           {confirmLogout && (
             <ConfirmModal
               title="Log out?"
