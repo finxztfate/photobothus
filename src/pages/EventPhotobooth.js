@@ -11,7 +11,6 @@ import {
   getLayoutPhotoCount,
   resolveLayoutId,
 } from '../data/stripLayouts';
-import useIsMobileBooth from '../hooks/useIsMobileBooth';
 import './EventPhotobooth.css';
 
 const LIVE_FILTERS = ['normal', 'bwfilm', 'vintage', 'seventies'];
@@ -35,8 +34,6 @@ function liveFilterLabel(id) {
 }
 
 function EventPhotobooth() {
-  const isMobileBooth = useIsMobileBooth();
-  const boothFit = isMobileBooth ? 'cover' : 'contain';
   const { event, code } = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -99,7 +96,7 @@ function EventPhotobooth() {
     window.setTimeout(() => setFlash(false), 180);
     try {
       const dataUrl = await cameraRef.current.captureBooth({
-        fit: boothFit,
+        fit: 'contain',
         mirrored,
         settleMs: 50,
       });
@@ -131,7 +128,7 @@ function EventPhotobooth() {
       capturingRef.current = false;
       setIsCapturing(false);
     }
-  }, [boothFit, mirrored, retakeIndex, selectedFilter, slotCount]);
+  }, [mirrored, retakeIndex, selectedFilter, slotCount]);
 
   const startCountdown = useCallback(() => {
     if (capturingRef.current || countdown != null) return;
@@ -251,13 +248,13 @@ function EventPhotobooth() {
             </div>
 
             <div className="event-booth-stage">
-              <div className={`event-booth-viewfinder${boothFit === 'contain' ? ' is-contain' : ''}`}>
+              <div className="event-booth-viewfinder is-contain">
                 <Camera
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
                   mirrored={mirrored}
                   orientation="portrait"
-                  objectFit={boothFit}
+                  objectFit="contain"
                   deviceId={selectedCamera}
                   onError={setCameraError}
                   showFullscreenButton={false}

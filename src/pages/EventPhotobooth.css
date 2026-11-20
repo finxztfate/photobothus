@@ -227,7 +227,7 @@ button.event-booth-back {
 
 .public-mobile-booth .event-booth-viewfinder .camera-webcam,
 .public-mobile-booth .event-booth-viewfinder video {
-  object-fit: cover !important;
+  object-fit: contain !important;
 }
 
 .event-booth-countdown {
