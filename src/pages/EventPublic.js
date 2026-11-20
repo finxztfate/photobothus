@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest, getEventGuestKey } from '../utils/api';
 import { formatEventTimeRange, parseEventDate } from '../utils/eventSchedule';
 import { DEFAULT_MAX_GUEST_UPLOADS } from '../data/eventLimits';
-import './Gallery.css';
+import './EventPublic.css';
 import './EventEditor.css';
 
 function formatEventDate(value) {
@@ -74,6 +74,10 @@ function EventPublic() {
     navigate('/');
   };
 
+  const live = event && event.isActive !== false;
+  const when = event ? formatEventDate(event.eventDate) : null;
+  const time = event ? formatEventTimeRange(event) : null;
+
   return (
     <div className="event-public-page">
       {limitReached &&
@@ -96,60 +100,83 @@ function EventPublic() {
           document.body
         )}
 
-      <div className="events-empty event-public-card">
-        {loading ? (
+      {loading ? (
+        <div className="event-public-loading">
+          <div className="event-public-spinner" />
           <p>Loading event…</p>
-        ) : error ? (
-          <>
-            <h1>Event unavailable</h1>
-            <p>{error}</p>
-            <Link to="/">Back home</Link>
-          </>
-        ) : (
-          <>
-            <h1>{event.name}</h1>
-            {event.hostName && <p><strong>Host:</strong> {event.hostName}</p>}
-            {event.eventDate && <p><strong>Date:</strong> {formatEventDate(event.eventDate)}</p>}
-            {formatEventTimeRange(event) && (
-              <p><strong>Time:</strong> {formatEventTimeRange(event)}</p>
-            )}
-            {event.location && <p><strong>Venue:</strong> {event.location}</p>}
-            <p>
-              {event.welcomeMessage ||
-                'You’re joining this Photobothus event. Take photos and they’ll be saved to the event gallery.'}
+        </div>
+      ) : error ? (
+        <div className="event-public-main">
+          <p className="event-public-kicker">Guest booth</p>
+          <h1>Event unavailable</h1>
+          <p className="event-public-lead">{error}</p>
+          <Link className="event-public-home" to="/">Back home</Link>
+        </div>
+      ) : (
+        <div className="event-public-main page-fade">
+          <p className={`event-public-kicker${live ? ' is-live' : ''}`}>
+            {live ? 'Guest booth' : 'Event closed'}
+          </p>
+          <h1>{event.name}</h1>
+          <p className="event-public-lead">
+            {event.welcomeMessage ||
+              'You’re joining this Photobothus event. Take photos and they’ll be saved to the event gallery.'}
+          </p>
+          {event.hashtags ? <p className="event-public-tags">{event.hashtags}</p> : null}
+
+          <section className="event-public-meta" aria-label="Event details">
+            {event.hostName ? (
+              <article>
+                <h2>Host</h2>
+                <p>{event.hostName}</p>
+              </article>
+            ) : null}
+            {when || time ? (
+              <article className="event-public-when">
+                <h2>{when && time ? 'When' : when ? 'Date' : 'Time'}</h2>
+                {when ? <p>{when}</p> : null}
+                {time ? <p className="event-public-time">{time}</p> : null}
+              </article>
+            ) : null}
+            {event.location ? (
+              <article>
+                <h2>Venue</h2>
+                <p>{event.location}</p>
+              </article>
+            ) : null}
+          </section>
+
+          {event.eventFull && (
+            <p className="event-public-alert" role="status">
+              This event’s gallery is full, so new photos can’t be added right now. Ask the
+              host to make room.
             </p>
-            {event.hashtags && <p className="event-hashtags">{event.hashtags}</p>}
-            {event.eventFull && (
-              <p className="events-error" role="status">
-                This event’s gallery is full, so new photos can’t be added right now. Ask the
-                host to make room.
+          )}
+
+          {!live ? (
+            <p className="event-public-alert" role="status">
+              This event is closed. The guest link is no longer available.
+            </p>
+          ) : (
+            <div className="event-public-cta">
+              <button
+                type="button"
+                className="event-public-start"
+                onClick={startBooth}
+                disabled={!!event.eventFull}
+              >
+                Start booth
+              </button>
+              <p className="event-public-hint">
+                {event.stripsEnabled
+                  ? 'Works best on your phone. Pick a layout, capture, then upload.'
+                  : 'Works best on your phone. Capture, edit, then upload to this event.'}
+                {' '}Each guest can upload {maxGuestUploads} photos.
               </p>
-            )}
-            {event.isActive === false ? (
-              <p className="events-error" role="status">
-                This event is closed. The guest link is no longer available.
-              </p>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="event-public-start"
-                  onClick={startBooth}
-                  disabled={!!event.eventFull}
-                >
-                  Start Booth
-                </button>
-                <p className="event-public-hint">
-                  {event.stripsEnabled
-                    ? 'Works best on your phone. Pick a layout → capture → edit → Upload.'
-                    : 'Works best on your phone. Capture → edit → Upload to this event.'}
-                  {' '}Each guest can upload {maxGuestUploads} photos.
-                </p>
-              </>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -321,6 +321,17 @@
   font-size: 0.82rem;
 }
 
+.auth-hint.is-error {
+  color: var(--danger-text);
+}
+
+.auth-optional {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
 .auth-checkbox {
   flex-direction: row !important;
   align-items: center;

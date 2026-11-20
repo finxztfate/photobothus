@@ -1,33 +1,41 @@
-import { buildSchedule } from '../../../../utils/eventSchedule';
+import { buildSchedule, minEndTime } from '../../../../utils/eventSchedule';
 
 /** Date, start time and end time inputs shared by the New Event and Edit Event forms. */
 function EventScheduleFields({ form, update }) {
   const schedule = buildSchedule(form.eventDate, form.startTime, form.endTime);
+  const endMin = minEndTime(form.startTime);
 
   return (
     <>
       <label>
         Event date
-        <input type="date" value={form.eventDate} onChange={update('eventDate')} />
+        <input type="date" value={form.eventDate} onChange={update('eventDate')} required />
       </label>
 
       <div className="auth-row">
         <label>
           Start time
-          <input type="time" value={form.startTime} onChange={update('startTime')} />
+          <input
+            type="time"
+            value={form.startTime}
+            onChange={update('startTime')}
+            required
+            max={form.endTime || undefined}
+          />
         </label>
         <label>
           End time
-          <input type="time" value={form.endTime} onChange={update('endTime')} />
+          <input
+            type="time"
+            value={form.endTime}
+            onChange={update('endTime')}
+            required
+            min={endMin || undefined}
+          />
         </label>
       </div>
-      <p className="auth-hint">
-        {schedule.error ||
-          (form.endTime
-            ? `The event closes to guests automatically at the end time${
-                schedule.endsNextDay ? ', on the following day' : ''
-              }.`
-            : 'Optional. Set an end time to close the event to guests automatically.')}
+      <p className={`auth-hint${schedule.error ? ' is-error' : ''}`}>
+        {schedule.error || 'The event closes to guests automatically at the end time.'}
       </p>
     </>
   );

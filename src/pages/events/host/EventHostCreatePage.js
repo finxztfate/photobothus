@@ -30,11 +30,11 @@ function EventHostCreatePage() {
   if (!isCustomer) return <Navigate to="/admin" replace />;
 
   const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  const schedule = buildSchedule(form.eventDate, form.startTime, form.endTime);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const schedule = buildSchedule(form.eventDate, form.startTime, form.endTime);
     if (schedule.error) {
       setError(schedule.error);
       return;
@@ -91,6 +91,7 @@ function EventHostCreatePage() {
           <input
             value={form.hostName}
             onChange={update('hostName')}
+            required
             placeholder="Host or organizer"
           />
         </label>
@@ -102,6 +103,7 @@ function EventHostCreatePage() {
           <input
             value={form.location}
             onChange={update('location')}
+            required
             placeholder="Venue or city"
           />
         </label>
@@ -112,12 +114,13 @@ function EventHostCreatePage() {
             value={form.welcomeMessage}
             onChange={update('welcomeMessage')}
             rows={3}
+            required
             placeholder="Welcome! Strike a pose and share your favorite moments with us."
           ></textarea>
         </label>
 
         <label>
-          Hashtags
+          Hashtags <span className="auth-optional">(optional)</span>
           <input
             value={form.hashtags}
             onChange={update('hashtags')}
@@ -134,7 +137,7 @@ function EventHostCreatePage() {
           <span>Enable photo strips</span>
         </label>
 
-        <button type="submit" disabled={submitting}>
+        <button type="submit" disabled={submitting || !!schedule.error}>
           {submitting ? 'Creating…' : 'Create event'}
         </button>
       </form>

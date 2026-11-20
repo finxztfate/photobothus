@@ -14,6 +14,16 @@ import './EventPhotobooth.css';
 
 const LIVE_FILTERS = ['normal', 'bwfilm', 'vintage', 'seventies'];
 const VIEWFINDER_ASPECT = 3 / 4;
+const TIMER_CYCLE = [3, 5, 0];
+
+function nextTimer(seconds) {
+  const index = TIMER_CYCLE.indexOf(seconds);
+  return TIMER_CYCLE[(index < 0 ? 0 : index + 1) % TIMER_CYCLE.length];
+}
+
+function timerLabel(seconds) {
+  return seconds <= 0 ? 'Instant' : `${seconds}s`;
+}
 
 function liveFilterLabel(id) {
   if (id === 'bwfilm') return 'B&W';
@@ -47,6 +57,7 @@ function EventPhotobooth() {
   const [cameraError, setCameraError] = useState('');
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
+  const [mirrored, setMirrored] = useState(true);
 
   useEffect(() => {
     getAvailableCameras().then((cameras) => {
@@ -122,6 +133,10 @@ function EventPhotobooth() {
 
   const startCountdown = useCallback(() => {
     if (capturingRef.current || countdown != null) return;
+    if (timerSeconds <= 0) {
+      takeShot();
+      return;
+    }
     let remaining = timerSeconds;
     setCountdown(remaining);
     countdownRef.current = window.setInterval(() => {
@@ -207,10 +222,10 @@ function EventPhotobooth() {
                 <button
                   type="button"
                   className="event-booth-icon-btn is-active"
-                  onClick={() => setTimerSeconds((prev) => (prev === 3 ? 5 : 3))}
-                  aria-label="Toggle timer"
+                  onClick={() => setTimerSeconds(nextTimer)}
+                  aria-label={`Timer ${timerLabel(timerSeconds)}. Cycle instant, 3 seconds, 5 seconds.`}
                 >
-                  {timerSeconds}s
+                  {timerLabel(timerSeconds)}
                 </button>
               </div>
             </div>
@@ -220,7 +235,7 @@ function EventPhotobooth() {
                 <Camera
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
-                  mirrored
+                  mirrored={mirrored}
                   orientation="portrait"
                   objectFit="contain"
                   deviceId={selectedCamera}
@@ -254,18 +269,32 @@ function EventPhotobooth() {
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                className="event-booth-shutter"
-                disabled={isCapturing || countdown != null || capturedPhotos.length >= slotCount}
-                onClick={startCountdown}
-                aria-label="Take photo"
-              />
-              {capturedPhotos.length >= slotCount && (
-                <button type="button" className="event-booth-primary" onClick={() => setScene('review')}>
+              <div className="event-booth-shutter-row">
+                <button
+                  type="button"
+                  className="event-booth-dock-side"
+                  disabled={capturedPhotos.length === 0}
+                  onClick={() => setScene('review')}
+                >
                   Review shots
                 </button>
-              )}
+                <button
+                  type="button"
+                  className="event-booth-shutter"
+                  disabled={isCapturing || countdown != null || capturedPhotos.length >= slotCount}
+                  onClick={startCountdown}
+                  aria-label="Take photo"
+                />
+                <button
+                  type="button"
+                  className={`event-booth-dock-side${mirrored ? ' is-active' : ''}`}
+                  onClick={() => setMirrored((on) => !on)}
+                  aria-pressed={mirrored}
+                  aria-label={mirrored ? 'Mirror on' : 'Mirror off'}
+                >
+                  Mirror
+                </button>
+              </div>
             </div>
           </>
         )}

@@ -10,6 +10,19 @@ let otherHost;
 
 const inMinutes = (minutes) => new Date(Date.now() + minutes * 60000).toISOString();
 
+function eventDetails(overrides = {}) {
+  return {
+    name: 'Party',
+    hostName: 'Alex',
+    eventDate: '2026-11-20',
+    startsAt: inMinutes(60),
+    endsAt: inMinutes(180),
+    location: 'The hall',
+    welcomeMessage: 'Welcome to the booth.',
+    ...overrides,
+  };
+}
+
 before(async () => {
   app = await startTestApp();
   host = app.db.addUser({ email: 'host@x.com' });
@@ -20,18 +33,20 @@ after(() => app.stop());
 
 // ---- start and end time
 
-test('an event can be created with or without a schedule', async () => {
-  const plain = await app.api('POST', '/api/events', { as: host, body: { name: 'No times' } });
-  assert.equal(plain.status, 201);
-  assert.equal(plain.body.event.startsAt, null);
-  assert.equal(plain.body.event.endsAt, null);
-  assert.equal(plain.body.event.isActive, true);
+test('creating an event requires every detail except hashtags', async () => {
+  const missing = await app.api('POST', '/api/events', { as: host, body: { name: 'No times' } });
+  assert.equal(missing.status, 400);
+
+  const withoutHashtags = await app.api('POST', '/api/events', { as: host, body: eventDetails({ name: 'No tags' }) });
+  assert.equal(withoutHashtags.status, 201);
+  assert.equal(withoutHashtags.body.event.hashtags, null);
+  assert.equal(withoutHashtags.body.event.isActive, true);
 
   const startsAt = inMinutes(-30);
   const endsAt = inMinutes(60);
   const timed = await app.api('POST', '/api/events', {
     as: host,
-    body: { name: 'Timed', eventDate: '2026-11-20', startsAt, endsAt },
+    body: eventDetails({ name: 'Timed', eventDate: '2026-11-20', startsAt, endsAt }),
   });
   assert.equal(timed.status, 201);
   assert.deepEqual(
@@ -41,7 +56,7 @@ test('an event can be created with or without a schedule', async () => {
 });
 
 test('impossible schedules are rejected', async () => {
-  const create = (body) => app.api('POST', '/api/events', { as: host, body: { name: 'x', ...body } });
+  const create = (body) => app.api('POST', '/api/events', { as: host, body: eventDetails(body) });
   assert.equal((await create({ startsAt: inMinutes(60), endsAt: inMinutes(30) })).status, 400);
   assert.equal((await create({ endsAt: inMinutes(-5) })).status, 400);
   assert.equal((await create({ endsAt: 'tomorrow-ish' })).status, 400);
@@ -59,7 +74,10 @@ test('a DATE column is sent as the calendar day, not a shifted timestamp', async
 
 test('editing keeps, changes or clears the schedule as asked', async () => {
   const endsAt = inMinutes(90);
-  const created = await app.api('POST', '/api/events', { as: host, body: { name: 'Edit me', eventDate: '2026-11-20', endsAt } });
+  const created = await app.api('POST', '/api/events', {
+    as: host,
+    body: eventDetails({ name: 'Edit me', eventDate: '2026-11-20', endsAt }),
+  });
   const { id } = created.body.event;
   const patch = (body) => app.api('PATCH', `/api/events/${id}`, { as: host, body });
 
@@ -113,7 +131,7 @@ test('an event closes itself at its end time and stays closed', async () => {
 
 test('ending by hand is permanent', async () => {
   const endsAt = inMinutes(120);
-  const created = await app.api('POST', '/api/events', { as: host, body: { name: 'Manual', endsAt } });
+  const created = await app.api('POST', '/api/events', { as: host, body: eventDetails({ name: 'Manual', endsAt }) });
   const { id, code } = created.body.event;
 
   const photo = app.db.addStrip({ event_id: id, image_url: app.storeFile('ended-event.png') });
@@ -171,7 +189,7 @@ test('only the owner can delete an event, and its photos go with it', async () =
 });
 
 test('photo strips stay off until the host turns them on', async () => {
-  const created = await app.api('POST', '/api/events', { as: host, body: { name: 'Photos only' } });
+  const created = await app.api('POST', '/api/events', { as: host, body: eventDetails({ name: 'Photos only' }) });
   assert.equal(created.status, 201);
   assert.equal(created.body.event.stripsEnabled, false);
   const { id, code } = created.body.event;

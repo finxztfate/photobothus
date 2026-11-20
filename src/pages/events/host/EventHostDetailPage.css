@@ -422,13 +422,29 @@
 
 .event-host-qr {
   flex-shrink: 0;
+  position: relative;
   background: #fff;
   color: #2a1810;
   padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .event-host-qr svg {
   display: block;
+}
+
+.event-host-qr-print {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  pointer-events: none;
+}
+
+.event-host-qr-download {
+  margin-top: 10px;
+  padding: 8px 12px;
 }
 
 .event-host-qr-code {

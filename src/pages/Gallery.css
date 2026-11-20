@@ -1,7 +1,6 @@
 .gallery-page,
 .events-page,
-.admin-page,
-.event-public-page {
+.admin-page {
   flex: 1;
   min-height: calc(100vh - 80px);
   padding: 40px 24px 80px;
@@ -11,8 +10,7 @@
 }
 
 .gallery-page *,
-.events-page *,
-.event-public-page * {
+.events-page * {
   font-family: inherit;
 }
 
@@ -26,7 +24,6 @@
 .gallery-header h1,
 .events-header h1,
 .admin-header h1,
-.event-public-page h1,
 .gallery-empty h1 {
   font-family: var(--font-heading);
   font-weight: 600;
@@ -39,8 +36,7 @@
 
 .gallery-header p,
 .events-header p,
-.admin-header p,
-.event-public-page p {
+.admin-header p {
   color: var(--text-muted);
 }
 
@@ -218,8 +214,7 @@
 
 .gallery-card-meta button:focus-visible,
 .gallery-empty a:focus-visible,
-.events-empty a:focus-visible,
-.event-public-start:focus-visible {
+.events-empty a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -356,44 +351,6 @@
   margin-top: 16px;
 }
 
-/* Guest event landing (/e/:code) */
-.event-public-card {
-  max-width: 560px;
-}
-
-.event-public-card strong {
-  color: var(--text-heading);
-}
-
-.event-public-start {
-  margin-top: 12px;
-  border: 1px solid var(--btn-border);
-  border-radius: 999px;
-  min-height: 56px;
-  padding: 14px 28px;
-  background: var(--btn-gradient);
-  color: var(--btn-text);
-  font-family: var(--font-subheading);
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: filter 0.2s ease, transform 0.15s ease;
-}
-
-.event-public-start:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-}
-
-.event-public-start:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  filter: none;
-  transform: none;
-}
-
 .gallery-more {
   display: flex;
   justify-content: center;
@@ -420,12 +377,6 @@
 .gallery-more button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.event-public-page .event-public-hint {
-  margin-top: 14px;
-  font-size: 0.9rem;
-  color: var(--text-muted);
 }
 
 .admin-shell {
@@ -505,8 +456,7 @@
 @media (max-width: 520px) {
   .gallery-page,
   .events-page,
-  .admin-page,
-  .event-public-page {
+  .admin-page {
     padding: 28px 14px 60px;
   }
 

@@ -14,17 +14,28 @@ export function parseEventDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+const padTime = (n) => String(n).padStart(2, '0');
+
 /** "18:30" for a time input, in local time. */
 export function toTimeInputValue(value) {
   const date = parseEventDate(value);
   if (!date) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${padTime(date.getHours())}:${padTime(date.getMinutes())}`;
+}
+
+/** Earliest end time the picker will allow after a given start time. */
+export function minEndTime(startTime) {
+  if (!startTime) return '';
+  const [hours, minutes] = String(startTime).split(':').map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return '';
+  if (hours === 23 && minutes === 59) return '';
+  const next = new Date(2000, 0, 1, hours, minutes + 1);
+  return `${padTime(next.getHours())}:${padTime(next.getMinutes())}`;
 }
 
 /**
  * Turns the form's date and time fields into the start and end moments.
- * An end time at or before the start time means the event runs past midnight.
+ * End time must be later than start time on the same date.
  */
 export function buildSchedule(eventDate, startTime, endTime) {
   const empty = { startsAt: null, endsAt: null, endsNextDay: false, error: '' };
@@ -39,16 +50,17 @@ export function buildSchedule(eventDate, startTime, endTime) {
     return { ...empty, error: 'Enter a valid date and time.' };
   }
 
-  let endsNextDay = false;
   if (start && end && end <= start) {
-    end.setDate(end.getDate() + 1);
-    endsNextDay = true;
+    return {
+      ...empty,
+      error: 'End time must be after start time on the same day.',
+    };
   }
 
   return {
     startsAt: start ? start.toISOString() : null,
     endsAt: end ? end.toISOString() : null,
-    endsNextDay,
+    endsNextDay: false,
     error: '',
   };
 }
@@ -57,6 +69,10 @@ export function formatEventTime(value) {
   const date = parseEventDate(value);
   if (!date) return '';
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function withoutMeridiem(label) {
+  return label.replace(/\s*(AM|PM|am|pm|a\.m\.|p\.m\.)$/i, '').trim();
 }
 
 /** "Fri, Nov 20, 11:00 PM" */
@@ -72,11 +88,18 @@ export function formatEventDateTime(value) {
   });
 }
 
-/** "6:00 PM – 11:00 PM", "From 6:00 PM", "Until 11:00 PM", or '' when no times are set. */
+/** "6:00 – 11:00 PM", "From 6:00 PM", "Until 11:00 PM", or '' when no times are set. */
 export function formatEventTimeRange(event) {
-  const start = formatEventTime(event?.startsAt);
-  const end = formatEventTime(event?.endsAt);
-  if (start && end) return `${start} – ${end}`;
+  const startDate = parseEventDate(event?.startsAt);
+  const endDate = parseEventDate(event?.endsAt);
+  const start = startDate ? formatEventTime(event.startsAt) : '';
+  const end = endDate ? formatEventTime(event.endsAt) : '';
+  if (start && end) {
+    const sameHalf =
+      startDate.getHours() < 12 === endDate.getHours() < 12
+      && withoutMeridiem(start) !== start;
+    return sameHalf ? `${withoutMeridiem(start)} – ${end}` : `${start} – ${end}`;
+  }
   if (start) return `From ${start}`;
   if (end) return `Until ${end}`;
   return '';

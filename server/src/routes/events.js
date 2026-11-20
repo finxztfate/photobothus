@@ -113,6 +113,16 @@ function readEventFields(body, fallback = {}) {
   };
 }
 
+function requireEventDetails(fields) {
+  if (!fields.name) throw badRequest('Event title is required');
+  if (!fields.hostName) throw badRequest('Host is required');
+  if (!fields.eventDate) throw badRequest('Event date is required');
+  if (!fields.startsAt) throw badRequest('Start time is required');
+  if (!fields.endsAt) throw badRequest('End time is required');
+  if (!fields.location) throw badRequest('Location is required');
+  if (!fields.welcomeMessage) throw badRequest('Welcome message is required');
+}
+
 router.use(requireAuth);
 
 // Events past their end time are closed before any host request reads them,
@@ -143,9 +153,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const fields = readEventFields(req.body);
-    if (!fields.name) {
-      return res.status(400).json({ error: 'Event title is required' });
-    }
+    requireEventDetails(fields);
     if (fields.endsAt && fields.endsAt <= new Date()) {
       return res.status(400).json({ error: 'That end time has already passed. Choose a later time.' });
     }
