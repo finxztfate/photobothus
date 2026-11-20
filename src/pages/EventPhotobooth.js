@@ -59,7 +59,6 @@ function EventPhotobooth() {
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [mirrored, setMirrored] = useState(true);
-  const [videoAspect, setVideoAspect] = useState(4 / 3);
 
   useEffect(() => {
     getAvailableCameras().then(setAvailableCameras);
@@ -92,7 +91,9 @@ function EventPhotobooth() {
     setFlash(true);
     window.setTimeout(() => setFlash(false), 180);
     try {
-      const dataUrl = await cameraRef.current.captureNative({
+      const dataUrl = await cameraRef.current.captureBooth({
+        aspect: 3 / 4,
+        fit: 'cover',
         mirrored,
         settleMs: 50,
       });
@@ -250,10 +251,7 @@ function EventPhotobooth() {
             </div>
 
             <div className="event-booth-stage">
-              <div
-                className="event-booth-viewfinder"
-                style={{ '--booth-camera-aspect': String(videoAspect) }}
-              >
+              <div className="event-booth-viewfinder">
                 <Camera
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
@@ -262,9 +260,6 @@ function EventPhotobooth() {
                   objectFit="cover"
                   deviceId={selectedCamera}
                   onError={setCameraError}
-                  onVideoDimensionsChange={({ aspect }) => {
-                    if (aspect > 0) setVideoAspect(aspect);
-                  }}
                   showFullscreenButton={false}
                   sharp
                 />
