@@ -113,6 +113,10 @@
   min-height: 0;
 }
 
+.event-guest-shell.is-compact .event-guest-main {
+  overflow: hidden;
+}
+
 /* On larger screens, keep guest shell readable but still phone-oriented */
 @media (min-width: 768px) {
   .event-guest-nav {

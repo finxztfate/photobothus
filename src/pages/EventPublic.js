@@ -136,7 +136,7 @@ function EventPublic() {
                   onClick={startBooth}
                   disabled={!!event.eventFull}
                 >
-                  Start Photobooth
+                  Start Booth
                 </button>
                 <p className="event-public-hint">
                   {event.stripsEnabled

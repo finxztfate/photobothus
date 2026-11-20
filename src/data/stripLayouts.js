@@ -6,7 +6,7 @@ export const STRIP_LAYOUTS = [
     name: 'Classic Strip',
     label: ['Classic', 'Strip'],
     photoCount: 4,
-    aspect: '2 / 5',
+    aspect: '1 / 3',
     areas: '"a" "b" "c" "d" "e"',
     rows: '1fr 1fr 1fr 1fr 0.3fr',
     columns: '1fr',
@@ -364,7 +364,9 @@ export function getLayoutCellRects(layoutId, stripWidth, stripHeight, options = 
 export function computeStripDimensions(layoutId) {
   const layout = getLayoutById(layoutId);
   const [aspectW, aspectH] = layout.aspect.split('/').map((value) => parseFloat(value.trim()));
-  const stripWidth = aspectW >= aspectH ? 1000 : 520;
+  let stripWidth = aspectW >= aspectH ? 1000 : 520;
+  if (layout.id === 1) stripWidth = 600;
+  if (layout.id === 2) stripWidth = 1200;
   const stripHeight = Math.round(stripWidth * (aspectH / aspectW));
 
   return {

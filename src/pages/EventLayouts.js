@@ -83,7 +83,7 @@ function EventLayouts() {
           Back to event
         </Link>
         <button type="button" className="cta-btn layouts-cta" onClick={handleUseLayout}>
-          Start Event Photobooth
+          Start Booth
         </button>
       </div>
     </div>

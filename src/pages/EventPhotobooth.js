@@ -1,89 +1,52 @@
-import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import { getLayoutById, getLayoutCssClass, getLayoutPhotoCount, resolveLayoutId, getBoothCaptureAspect } from '../data/filterTemplates';
-import { filterPresets, getAvailableCameras } from '../data/photoboothData';
-import { apiRequest, getEventGuestKey } from '../utils/api';
-import './EventPhotobooth.css';
-import './EventEditor.css';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import Camera from '../components/Camera';
+import {
+  getAvailableCameras,
+  getFilterFrame,
+} from '../data/photoboothData';
+import {
+  getLayoutById,
+  getLayoutPhotoCount,
+  resolveLayoutId,
+} from '../data/stripLayouts';
+import './EventPhotobooth.css';
 
-const EVENT_SINGLE_LAYOUT = 3; // Polaroid — 1 photo
+const LIVE_FILTERS = ['normal', 'bwfilm', 'vintage', 'seventies'];
+const VIEWFINDER_ASPECT = 3 / 4;
 
-function getLayoutType(layoutId) {
-  return getLayoutCssClass(layoutId);
-}
-
-function getLayoutStyle() {
-  return '';
-}
-
-function getSlots(layoutId) {
-  return Array.from({ length: getLayoutPhotoCount(layoutId) });
+function liveFilterLabel(id) {
+  if (id === 'bwfilm') return 'B&W';
+  if (id === 'seventies') return 'Warm';
+  if (id === 'normal') return 'Original';
+  if (id === 'vintage') return 'Vintage';
+  return id;
 }
 
 function EventPhotobooth() {
+  const { event, code } = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { code: eventCode } = useParams();
-  const templateParam = searchParams.get('layout');
+  const cameraRef = useRef(null);
+  const countdownRef = useRef(null);
+  const capturingRef = useRef(false);
 
-  const [eventInfo, setEventInfo] = useState(null);
-  const [limitReached, setLimitReached] = useState(false);
-  const [guestUploadCount, setGuestUploadCount] = useState(0);
-  const maxGuestUploads = 10;
+  const layout = resolveLayoutId(searchParams.get('layout') || 1);
+  const layoutMeta = getLayoutById(layout);
+  const slotCount = getLayoutPhotoCount(layout);
+  const captureOnly = event?.stripsEnabled === false;
+
+  const [scene, setScene] = useState('capture');
+  const [capturedPhotos, setCapturedPhotos] = useState([]);
+  const [retakeIndex, setRetakeIndex] = useState(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [countdown, setCountdown] = useState(null);
+  const [timerSeconds, setTimerSeconds] = useState(3);
+  const [flash, setFlash] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('normal');
-  const [isMirrored, setIsMirrored] = useState(true);
+  const [cameraError, setCameraError] = useState('');
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
-  const [capturedPhotos, setCapturedPhotos] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [isCapturing, setIsCapturing] = useState(false);
-
-  const webcamRef = useRef(null);
-  const isCapturingRef = useRef(false);
-
-  const initialLayout = templateParam ? resolveLayoutId(templateParam) : 1;
-  const [layout, setLayout] = useState(() => resolveLayoutId(initialLayout));
-  const captureAspect = getBoothCaptureAspect();
-
-  useEffect(() => {
-    if (!eventCode) return undefined;
-    sessionStorage.setItem('eventCode', eventCode);
-    let cancelled = false;
-    (async () => {
-      try {
-        const guestKey = getEventGuestKey(eventCode);
-        const data = await apiRequest(
-          `/api/public/events/${eventCode}?guestKey=${encodeURIComponent(guestKey)}`
-        );
-        if (cancelled) return;
-        setEventInfo(data.event);
-        setGuestUploadCount(data.event.guestUploadCount || 0);
-        if (Number(data.event.uploadsRemaining) <= 0) {
-          setLimitReached(true);
-        }
-        if (data.event && !data.event.stripsEnabled) {
-          setLayout(EVENT_SINGLE_LAYOUT);
-        }
-      } catch {
-        if (!cancelled) setEventInfo(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [eventCode]);
-
-  useEffect(() => {
-    const param = searchParams.get('layout');
-    if (!param) return;
-    if (eventInfo && !eventInfo.stripsEnabled) {
-      setLayout(EVENT_SINGLE_LAYOUT);
-      return;
-    }
-    setLayout(resolveLayoutId(param));
-  }, [searchParams, eventInfo]);
 
   useEffect(() => {
     getAvailableCameras().then((cameras) => {
@@ -94,83 +57,84 @@ function EventPhotobooth() {
     });
   }, []);
 
-  useEffect(() => {
-    const slotCount = getSlots(layout).length;
-    setSelectedIds((prev) => {
-      const valid = prev
-        .filter((id) => capturedPhotos.some((p) => p.id === id))
-        .slice(0, slotCount);
-      if (valid.length === prev.length && valid.every((id, i) => id === prev[i])) return prev;
-      return valid;
-    });
-  }, [capturedPhotos, layout]);
+  useEffect(() => () => {
+    if (countdownRef.current) window.clearInterval(countdownRef.current);
+  }, []);
 
-  const handleCapture = async () => {
-    if (isCapturingRef.current) return;
-    isCapturingRef.current = true;
+  const shotNumber = retakeIndex != null
+    ? retakeIndex + 1
+    : Math.min(capturedPhotos.length + 1, slotCount);
+
+  const goEditor = useCallback((photos) => {
+    navigate(`/e/${code}/editor`, {
+      state: {
+        photos,
+        layout: captureOnly ? 3 : layout,
+        captureOnly,
+        stripsEnabled: !captureOnly,
+      },
+    });
+  }, [captureOnly, code, layout, navigate]);
+
+  const takeShot = useCallback(async () => {
+    if (!cameraRef.current || capturingRef.current) return;
+    capturingRef.current = true;
     setIsCapturing(true);
-    setTimeout(() => {
-      isCapturingRef.current = false;
-      setIsCapturing(false);
-    }, 700);
-
-    const videoEl = webcamRef.current?.getVideoElement?.();
-    if (!videoEl?.videoWidth || !videoEl?.videoHeight) return;
-
-    const imageSrc = await webcamRef.current?.captureBooth({ settleMs: 100 });
-    if (!imageSrc) return;
-
-    const photo = { id: Date.now() + Math.random(), src: imageSrc, filter: 'none' };
-    setCapturedPhotos((prev) => [...prev, photo]);
-
-    if (eventInfo?.stripsEnabled) {
-      const slotCount = getSlots(layout).length;
-      setSelectedIds((prev) => (prev.length < slotCount ? [...prev, photo.id] : prev));
-    }
-  };
-
-  const goToEditor = (photos) => {
-    const stripsEnabled = !!eventInfo?.stripsEnabled;
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 180);
     try {
-      sessionStorage.setItem(
-        'eventEditorState',
-        JSON.stringify({
-          capturedPhotos: photos,
-          layout: stripsEnabled ? layout : null,
-          customBg: '#000000',
-          customBorder: '#000000',
-          stripsEnabled,
-          captureOnly: !stripsEnabled,
-          stripImageData: null,
-        })
-      );
-    } catch {
-      // Quota / private mode — rely on router state
+      const dataUrl = await cameraRef.current.captureBooth({
+        aspect: VIEWFINDER_ASPECT,
+        mirrored: false,
+        settleMs: 50,
+      });
+      if (!dataUrl) {
+        setCameraError('Camera not ready. Try again.');
+        return;
+      }
+      const photo = {
+        id: Date.now() + Math.random(),
+        src: dataUrl,
+        filter: 'none',
+        frame: getFilterFrame(selectedFilter),
+      };
+      setCapturedPhotos((prev) => {
+        let next;
+        if (retakeIndex != null && retakeIndex >= 0 && retakeIndex < prev.length) {
+          next = [...prev];
+          next[retakeIndex] = photo;
+        } else {
+          next = [...prev, photo].slice(0, slotCount);
+        }
+        const finishedRetake = retakeIndex != null;
+        if (finishedRetake || next.length >= slotCount) {
+          setScene('review');
+        }
+        return next;
+      });
+      setRetakeIndex(null);
+    } finally {
+      capturingRef.current = false;
+      setIsCapturing(false);
     }
-    navigate(`/e/${eventCode}/editor`, {
-      state: { photos, layout: stripsEnabled ? layout : null, eventCode, stripsEnabled, captureOnly: !stripsEnabled },
-    });
-  };
+  }, [retakeIndex, selectedFilter, slotCount]);
 
-  const toggleSelectPhoto = (photoId) => {
-    if (!eventInfo?.stripsEnabled) return; // capture-only: no strip slot picking
-    const slotCount = getSlots(layout).length;
-    setSelectedIds((prev) => {
-      if (prev.includes(photoId)) return prev.filter((id) => id !== photoId);
-      if (prev.length >= slotCount) return prev;
-      return [...prev, photoId];
-    });
-  };
-
-  const removeCapturedPhoto = (photoId) => {
-    setCapturedPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    setSelectedIds((prev) => prev.filter((id) => id !== photoId));
-  };
-
-  const clearEventPhotos = () => {
-    setCapturedPhotos([]);
-    setSelectedIds([]);
-  };
+  const startCountdown = useCallback(() => {
+    if (capturingRef.current || countdown != null) return;
+    let remaining = timerSeconds;
+    setCountdown(remaining);
+    countdownRef.current = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.clearInterval(countdownRef.current);
+        countdownRef.current = null;
+        setCountdown(null);
+        takeShot();
+        return;
+      }
+      setCountdown(remaining);
+    }, 1000);
+  }, [countdown, takeShot, timerSeconds]);
 
   const switchCamera = () => {
     if (availableCameras.length < 2) return;
@@ -179,197 +143,130 @@ function EventPhotobooth() {
     setSelectedCamera(availableCameras[nextIndex].id);
   };
 
-  const stripsOn = !!eventInfo?.stripsEnabled;
-  const layoutClass = stripsOn
-    ? `${getLayoutType(layout)}${getLayoutStyle(layout) ? ` ${getLayoutStyle(layout)}` : ''}`.trim()
-    : 'capture-only';
-  const slotCount = getSlots(layout).length;
-  const canContinue = stripsOn
-    ? selectedIds.length >= slotCount || capturedPhotos.length >= slotCount
-    : capturedPhotos.length > 0;
-
-  const photosForEditor = () => {
-    if (stripsOn && selectedIds.length >= slotCount) {
-      return selectedIds
-        .slice(0, slotCount)
-        .map((id) => capturedPhotos.find((p) => p.id === id))
-        .filter(Boolean);
-    }
-    return capturedPhotos;
+  const beginRetake = (index) => {
+    setRetakeIndex(index);
+    setScene('capture');
   };
 
   return (
     <div className="event-mobile-booth">
-      {limitReached &&
-        createPortal(
-          <div className="edit-download-modal" role="dialog" aria-modal="true">
-            <div className="edit-download-modal-card">
-              <h2>Upload limit reached</h2>
-              <p>
-                You’ve used all <strong>{maxGuestUploads}</strong> uploads for this event
-                ({guestUploadCount}/{maxGuestUploads}).
+      <div className="event-mobile-phone">
+        {scene === 'review' ? (
+          <div className="event-booth-review">
+            <div className="event-booth-topbar">
+              <Link to={captureOnly ? `/e/${code}` : `/e/${code}/layouts`} className="event-booth-back">
+                Back
+              </Link>
+              <p className="event-booth-progress">Review</p>
+              <span className="event-booth-top-spacer" />
+            </div>
+            <p className="event-booth-review-hint">Tap a shot to retake just that frame.</p>
+            <div className={`event-booth-review-grid ${slotCount <= 2 ? 'is-few' : ''}`}>
+              {capturedPhotos.map((photo, index) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  className="event-booth-review-shot"
+                  onClick={() => beginRetake(index)}
+                >
+                  <img src={photo.src} alt={`Shot ${index + 1}`} />
+                  <span>Retake {index + 1}</span>
+                </button>
+              ))}
+            </div>
+            <div className="event-booth-review-actions">
+              <button type="button" className="event-booth-secondary" onClick={() => setScene('capture')}>
+                Back to camera
+              </button>
+              <button
+                type="button"
+                className="event-booth-primary"
+                disabled={capturedPhotos.length < slotCount}
+                onClick={() => goEditor(capturedPhotos)}
+              >
+                Customize &amp; download
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="event-booth-topbar">
+              <Link to={captureOnly ? `/e/${code}` : `/e/${code}/layouts`} className="event-booth-back">
+                Back
+              </Link>
+              <p className="event-booth-progress">
+                {shotNumber} / {slotCount}
               </p>
-              <p>Thanks for sharing your moments!</p>
-              <div className="custom-modal-actions">
+              <div className="event-booth-top-actions">
+                {availableCameras.length > 1 && (
+                  <button type="button" className="event-booth-icon-btn" onClick={switchCamera}>
+                    Flip
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="edit-download"
-                  onClick={() => {
-                    try {
-                      sessionStorage.removeItem('eventEditorState');
-                      sessionStorage.removeItem('eventCode');
-                    } catch {
-                      /* ignore */
-                    }
-                    navigate('/');
-                  }}
+                  className="event-booth-icon-btn is-active"
+                  onClick={() => setTimerSeconds((prev) => (prev === 3 ? 5 : 3))}
+                  aria-label="Toggle timer"
                 >
-                  Done
+                  {timerSeconds}s
                 </button>
               </div>
             </div>
-          </div>,
-          document.body
-        )}
 
-      <p className="event-mobile-desktop-note">
-        Best on your phone — open this event link on mobile for the full guest booth.
-      </p>
+            <div className="event-booth-stage">
+              <div className="event-booth-viewfinder">
+                <Camera
+                  ref={cameraRef}
+                  selectedFilter={selectedFilter}
+                  mirrored
+                  orientation="portrait"
+                  objectFit="cover"
+                  deviceId={selectedCamera}
+                  onError={setCameraError}
+                />
+                {countdown != null && (
+                  <div className="event-booth-countdown" aria-live="assertive">{countdown}</div>
+                )}
+                {flash && <div className="event-booth-flash" />}
+              </div>
+            </div>
 
-      <div className="event-mobile-phone">
-        <header className="event-mobile-top">
-          <div className="event-mobile-top-text">
-            <strong>{eventInfo?.name || 'Event booth'}</strong>
-            <span>
-              {capturedPhotos.length === 0
-                ? 'Snap freely · upload limit later'
-                : stripsOn
-                  ? `${capturedPhotos.length} shot${capturedPhotos.length === 1 ? '' : 's'} · select ${slotCount} for strip (${selectedIds.length}/${slotCount})`
-                  : `${capturedPhotos.length} capture${capturedPhotos.length === 1 ? '' : 's'} ready`}
-            </span>
-          </div>
-          <div className="event-mobile-top-actions">
-            {stripsOn && (
-              <button
-                type="button"
-                className="event-mobile-chip"
-                onClick={() => navigate(`/e/${eventCode}/layouts`)}
-              >
-                Layout
-              </button>
+            {cameraError && <p className="event-booth-error">{cameraError}</p>}
+            {layoutMeta?.name && (
+              <p className="event-booth-layout-name">{layoutMeta.name}</p>
             )}
-          </div>
-        </header>
 
-        <div
-          className={`event-mobile-preview camera-preview ${layoutClass}`}
-          style={{ '--booth-photo-aspect': captureAspect, aspectRatio: captureAspect }}
-        >
-          <Camera
-            ref={webcamRef}
-            selectedFilter={selectedFilter}
-            mirrored={isMirrored}
-            deviceId={selectedCamera}
-            onSwitchCamera={availableCameras.length > 1 ? switchCamera : null}
-          />
-
-          <div className="event-mobile-filters">
-            {filterPresets.slice(0, 8).map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`event-mobile-filter${selectedFilter === f.id ? ' active' : ''}`}
-                onClick={() => setSelectedFilter(f.id)}
-              >
-                {f.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="event-mobile-preview-controls">
-            <button
-              type="button"
-              className="event-mobile-icon-btn"
-              onClick={() => setIsMirrored((prev) => !prev)}
-              aria-label={isMirrored ? 'Disable mirror' : 'Enable mirror'}
-            >
-              {isMirrored ? '⇔' : '⇆'}
-            </button>
-            <button
-              type="button"
-              className="event-mobile-shutter"
-              onClick={() => {
-                if (!isCapturing) handleCapture();
-              }}
-              disabled={isCapturing}
-              aria-label="Take photo"
-            />
-            {availableCameras.length > 1 ? (
+            <div className="event-booth-dock">
+              <div className="event-booth-filters" role="tablist" aria-label="Live filters">
+                {LIVE_FILTERS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedFilter === id}
+                    className={`event-booth-filter ${selectedFilter === id ? 'is-active' : ''}`}
+                    onClick={() => setSelectedFilter(id)}
+                  >
+                    {liveFilterLabel(id)}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
-                className="event-mobile-icon-btn"
-                onClick={switchCamera}
-                aria-label="Switch camera"
-              >
-                ↻
-              </button>
-            ) : (
-              <span className="event-mobile-icon-spacer" />
-            )}
-          </div>
-        </div>
-
-        {capturedPhotos.length > 0 && (
-          <div className="event-mobile-gallery" aria-label="Photos taken">
-            {capturedPhotos.map((photo) => {
-              const selectedIndex = selectedIds.indexOf(photo.id);
-              const isSelected = stripsOn && selectedIndex >= 0;
-              return (
-                <div
-                  key={photo.id}
-                  className={`event-mobile-thumb${isSelected ? ' selected' : ''}`}
-                >
-                  <button
-                    type="button"
-                    className="event-mobile-thumb-btn"
-                    onClick={() => toggleSelectPhoto(photo.id)}
-                    aria-pressed={isSelected}
-                    aria-label={stripsOn ? 'Select for strip' : 'Captured photo'}
-                  >
-                    <img src={photo.src} alt="" style={{ filter: photo.filter }} />
-                    {isSelected && (
-                      <span className="event-mobile-thumb-order">{selectedIndex + 1}</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="event-mobile-thumb-remove"
-                    onClick={() => removeCapturedPhoto(photo.id)}
-                    aria-label="Remove photo"
-                  >
-                    ×
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                className="event-booth-shutter"
+                disabled={isCapturing || countdown != null || capturedPhotos.length >= slotCount}
+                onClick={startCountdown}
+                aria-label="Take photo"
+              />
+              {capturedPhotos.length >= slotCount && (
+                <button type="button" className="event-booth-primary" onClick={() => setScene('review')}>
+                  Review shots
+                </button>
+              )}
+            </div>
+          </>
         )}
-
-        <footer className="event-mobile-footer">
-          {capturedPhotos.length > 0 && (
-            <button type="button" className="event-mobile-secondary" onClick={clearEventPhotos}>
-              Clear
-            </button>
-          )}
-          <button
-            type="button"
-            className="event-mobile-primary"
-            disabled={!canContinue}
-            onClick={() => goToEditor(photosForEditor())}
-          >
-            {stripsOn ? 'Continue to editor' : 'Review photos'}
-          </button>
-        </footer>
       </div>
     </div>
   );

@@ -366,6 +366,7 @@
   margin-top: 12px;
   border: 1px solid var(--btn-border);
   border-radius: 999px;
+  min-height: 56px;
   padding: 14px 28px;
   background: var(--btn-gradient);
   color: var(--btn-text);

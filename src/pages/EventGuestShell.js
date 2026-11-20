@@ -10,6 +10,8 @@ function EventGuestShell() {
   const [unavailable, setUnavailable] = useState('');
   const [checked, setChecked] = useState(false);
   const onEditor = location.pathname.includes('/editor');
+  const onBooth = location.pathname.includes('/photobooth');
+  const hideNav = onEditor || onBooth;
 
   useEffect(() => {
     if (!code) return undefined;
@@ -73,7 +75,8 @@ function EventGuestShell() {
   }
 
   return (
-    <div className="event-guest-shell">
+    <div className={`event-guest-shell${hideNav ? ' is-compact' : ''}`}>
+      {!hideNav && (
       <header className="event-guest-nav">
         <div className="event-guest-nav-brand">
           <Link to={`/e/${code}`} className="event-guest-nav-title">
@@ -96,6 +99,7 @@ function EventGuestShell() {
           )}
         </nav>
       </header>
+      )}
       <div key={location.pathname} className="event-guest-main page-fade">
         <Outlet context={{ event, code }} />
       </div>

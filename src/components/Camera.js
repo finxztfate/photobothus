@@ -175,6 +175,9 @@ const Camera = forwardRef(function Camera(
     detectedFace = null,
     mirrored = false,
     deviceId = null,
+    objectFit = 'cover',
+    orientation = 'landscape',
+    onError = null,
     onSwitchCamera = null,
     onVideoDimensionsChange = null,
     frameId = null,
@@ -231,19 +234,24 @@ const Camera = forwardRef(function Camera(
   }, []);
 
   const getVideoConstraints = () => {
+    const portrait = orientation === 'portrait';
+    const constraints = portrait
+      ? {
+          width: { ideal: 960 },
+          height: { ideal: 1280 },
+          aspectRatio: { ideal: 3 / 4 },
+        }
+      : {
+          width: { ideal: 1280 },
+          height: { ideal: 960 },
+          aspectRatio: { ideal: 4 / 3 },
+        };
     if (deviceId) {
-      return {
-        deviceId,
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        facingMode: 'user'
-      };
+      constraints.deviceId = { exact: deviceId };
+    } else {
+      constraints.facingMode = { ideal: 'user' };
     }
-
-    return {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
-    };
+    return constraints;
   };
 
   const getVideoElementRaw = () => {
@@ -280,6 +288,7 @@ const Camera = forwardRef(function Camera(
   };
 
   const handleUserMedia = () => {
+    onError?.('');
     window.requestAnimationFrame(() => reportVideoDimensions());
     window.setTimeout(() => reportVideoDimensions(), 250);
   };
@@ -381,12 +390,13 @@ const Camera = forwardRef(function Camera(
         className="camera-webcam"
         videoConstraints={getVideoConstraints()}
         onUserMedia={handleUserMedia}
+        onUserMediaError={(err) => onError?.(err?.message || 'Camera unavailable')}
         onLoadedMetadata={handleVideoReady}
         style={{
           width: '100%',
           height: '100%',
           borderRadius: isFullscreen ? '0' : '20px',
-          objectFit: 'cover',
+          objectFit,
           transform: mirrored ? 'scaleX(-1)' : 'none',
           filter: filters[selectedFilter] || filters.normal,
         }}

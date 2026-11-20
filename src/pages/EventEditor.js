@@ -452,6 +452,28 @@ function EventEditor() {
     });
   };
 
+  const handleNativeShare = async () => {
+    await trackDataAction(async () => {
+      const dataUrl = await generateStrip({ forExport: true });
+      if (!dataUrl) return;
+      const filename = `photobooth-strip-${Date.now()}.png`;
+      try {
+        const file = await dataUrlToFile(dataUrl, filename);
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Photobothus',
+            text: 'My photo strip',
+          });
+          return;
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+      downloadDataUrl(dataUrl, filename);
+    });
+  };
+
   const handleSaveOnline = async () => {
     await trackDataAction(async () => {
     setSaveMessage('');
@@ -828,7 +850,8 @@ function EventEditor() {
                 ? 'Limit reached'
                 : `Upload (${uploadsRemaining ?? maxGuestUploads} left)`}
           </button>
-          <button type="button" className="edit-share" onClick={handleDownload} disabled={isGenerating}>Download</button>
+          <button type="button" className="edit-share" onClick={handleDownload} disabled={isGenerating}>Download PNG</button>
+          <button type="button" className="edit-share" onClick={handleNativeShare} disabled={isGenerating}>Share</button>
           <button type="button" className="edit-share" onClick={handleShare} disabled={isGenerating || isGeneratingStory}>IG Story</button>
           <button type="button" className="edit-close" onClick={handleClose}>Back</button>
         </div>
@@ -930,8 +953,9 @@ function EventEditor() {
                   <div className="custom-sizes-section">
                     <h4>Recommended Frame Sizes</h4>
                     <ul className="custom-sizes-list">
-                      <li><strong>Classic / Polaroid / Wide:</strong> 520px wide (height follows layout)</li>
-                      <li><strong>4x4 Frame:</strong> 520 × 780px</li>
+                      <li><strong>Classic 4-shot strip:</strong> 600 × 1800px (2×6 in @ 300 DPI)</li>
+                      <li><strong>2×2 / 4x4 Frame:</strong> 1200 × 1800px (4×6 in @ 300 DPI)</li>
+                      <li><strong>IG Story / wallpaper:</strong> 1080 × 1920px (9:16)</li>
                       <li><strong>4x6 layouts:</strong> 1000 × 667px</li>
                     </ul>
                     <p className="custom-sizes-note">Use a PNG with transparent photo areas. Match the layout aspect ratio for best results.</p>

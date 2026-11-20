@@ -102,6 +102,7 @@
 
 .layouts-page .layouts-cta {
   margin-top: 8px;
+  min-height: 56px;
 }
 
 .layout-option.is-selected .layout-preview {
