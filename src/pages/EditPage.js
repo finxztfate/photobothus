@@ -10,6 +10,7 @@ import { useAuth } from '../utils/auth';
 import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
+import CustomFrameModal from '../components/CustomFrameModal';
 import {
   IconDownload,
   IconGallery,
@@ -378,18 +379,6 @@ function EditPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isCustomModalOpen]);
 
-  const handleCustomFrameUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target.result;
-        setCustomFramePreview(result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const applyCustomFrame = () => {
     if (customFramePreview) {
       setCustomBg(customFramePreview);
@@ -457,69 +446,14 @@ function EditPage() {
       </header>
 
       {isCustomModalOpen && (
-        <div
-          className="edit-custom-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="custom-modal-title"
-          onClick={() => setIsCustomModalOpen(false)}
-        >
-          <div className="edit-custom-modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2 id="custom-modal-title">Create Custom Frame</h2>
-            <div className="custom-modal-body">
-              <div className="custom-modal-preview">
-                {previewStrip ? (
-                  <>
-                    <p className="edit-accent-text">Preview with your frame:</p>
-                    <img src={previewStrip} alt="Strip preview with custom frame" className="edit-strip-image" />
-                  </>
-                ) : (
-                  <div className="edit-empty" style={{ height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Upload a frame to see preview</div>
-                )}
-                <div className="custom-frame-upload-section">
-                  <label className="custom-frame-upload-label">Select Image</label>
-                  <input
-                    id="custom-frame-input"
-                    type="file"
-                    accept="image/*"
-                    className="custom-frame-upload-input"
-                    onChange={handleCustomFrameUpload}
-                  />
-                  <label className="custom-frame-upload-btn" htmlFor="custom-frame-input">Choose File</label>
-                  {customFramePreview && (
-                    <button className="custom-frame-apply-btn" onClick={applyCustomFrame}>Apply</button>
-                  )}
-                </div>
-              </div>
-              <div className="custom-modal-instructions">
-                <div className="custom-modal-content">
-                  <p className="custom-modal-intro">Make the frame the same size as the final strip canvas:</p>
-                  <div className="custom-sizes-section">
-                    <h4>Recommended Frame Sizes</h4>
-                    <ul className="custom-sizes-list">
-                      <li><strong>Classic / Polaroid / Wide:</strong> 520px wide (height follows layout)</li>
-                      <li><strong>4x4 Frame:</strong> 520 × 780px</li>
-                      <li><strong>4x6 layouts:</strong> 1000 × 667px</li>
-                    </ul>
-                    <p className="custom-sizes-note">Use a PNG with transparent photo areas. Match the layout aspect ratio for best results.</p>
-                  </div>
-                  <div className="custom-format-section">
-                    <h4>Best Format</h4>
-                    <ul className="custom-format-list">
-                      <li>PNG format</li>
-                      <li>Transparent center area</li>
-                      <li>Frame/border artwork on the edges</li>
-                      <li>Important details inside safe area</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="custom-modal-actions">
-              <button className="edit-modal-close" onClick={() => setIsCustomModalOpen(false)}>Close</button>
-            </div>
-          </div>
-        </div>
+        <CustomFrameModal
+          layoutId={layout}
+          previewStrip={previewStrip}
+          canApply={Boolean(customFramePreview)}
+          onSelect={setCustomFramePreview}
+          onApply={applyCustomFrame}
+          onClose={() => setIsCustomModalOpen(false)}
+        />
       )}
 
       <div className="edit-body">

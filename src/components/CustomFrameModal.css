@@ -1,0 +1,245 @@
+.frame-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 6, 4, 0.72);
+}
+
+.frame-modal-card {
+  width: min(860px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  background: var(--bg-primary);
+  color: var(--text-body);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+}
+
+.frame-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 8px;
+}
+
+.frame-modal-kicker {
+  margin: 0 0 4px;
+  font-family: var(--font-subheading);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #E8A33D;
+}
+
+.frame-modal-head h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.frame-modal-x {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-body);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.frame-modal-x:hover {
+  color: var(--text-heading);
+}
+
+.frame-modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 22px;
+  padding: 12px 24px 8px;
+}
+
+.frame-modal-preview {
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(232, 163, 61, 0.14), transparent 65%),
+    #100d09;
+}
+
+.frame-modal-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
+
+.frame-modal-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--text-body);
+  text-align: center;
+}
+
+.frame-modal-placeholder span {
+  font-family: var(--font-subheading);
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.frame-modal-placeholder small {
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+.frame-modal-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.frame-modal-size {
+  display: grid;
+  gap: 2px;
+}
+
+.frame-modal-size span,
+.frame-modal-size small {
+  font-family: var(--font-subheading);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #E8A33D;
+}
+
+.frame-modal-size strong {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--text-heading);
+}
+
+.frame-modal-size em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.frame-modal-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 16px;
+  background: rgba(232, 163, 61, 0.08);
+  cursor: pointer;
+}
+
+.frame-modal-drop input {
+  display: none;
+}
+
+.frame-modal-drop strong {
+  color: var(--text-heading);
+  font-size: 0.95rem;
+}
+
+.frame-modal-drop span {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.frame-modal-drop.is-dragging,
+.frame-modal-drop:hover {
+  background: rgba(232, 163, 61, 0.16);
+}
+
+.frame-modal-tips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.frame-modal-tips li {
+  padding: 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-body);
+}
+
+.frame-modal-tips li::before {
+  content: '–  ';
+  color: #E8A33D;
+}
+
+.frame-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 22px;
+}
+
+.frame-modal-cancel,
+.frame-modal-apply {
+  padding: 11px 18px;
+  border: 0;
+  font-family: var(--font-subheading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.frame-modal-cancel {
+  background: transparent;
+  color: var(--text-body);
+}
+
+.frame-modal-cancel:hover {
+  color: var(--text-heading);
+}
+
+.frame-modal-apply {
+  background: var(--btn-gradient);
+  color: #F0EFEF;
+}
+
+.frame-modal-apply:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.frame-modal-apply:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .frame-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .frame-modal-preview {
+    min-height: 200px;
+  }
+
+  .frame-modal-foot {
+    flex-direction: column-reverse;
+  }
+
+  .frame-modal-cancel,
+  .frame-modal-apply {
+    width: 100%;
+  }
+}
