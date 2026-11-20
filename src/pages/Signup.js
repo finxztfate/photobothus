@@ -11,10 +11,13 @@ function Signup() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>Sign up with Google</h1>
-        <p className="auth-subtitle">Use your Google account to save strips and host events.</p>
+        <p className="auth-subtitle">
+          This is the only step that creates an account. You will be asked to pick the Google account to use.
+        </p>
         {error && <p className="auth-error">{error}</p>}
         <GoogleSignInButton
-          onSuccessNavigate={(user) => navigate(user.role === 'admin' ? '/admin' : '/')}
+          mode="signup"
+          onSuccessNavigate={(user) => navigate(user.role === 'admin' ? '/admin' : '/welcome', { replace: true })}
           onError={setError}
         />
         <p className="auth-footer">

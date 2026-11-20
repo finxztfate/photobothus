@@ -4,10 +4,11 @@ import { useAuth } from '../utils/auth';
 
 const MAX_BUTTON_WIDTH = 352;
 
-function GoogleSignInButton({ onSuccessNavigate, onError }) {
+function GoogleSignInButton({ mode = 'login', onSuccessNavigate, onError }) {
   const { loginWithGoogle } = useAuth();
   const wrapRef = useRef(null);
   const [buttonWidth, setButtonWidth] = useState(MAX_BUTTON_WIDTH);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -31,22 +32,34 @@ function GoogleSignInButton({ onSuccessNavigate, onError }) {
   }
 
   return (
-    <div className="google-btn-wrap" ref={wrapRef}>
+    <div className={`google-btn-wrap${busy ? ' is-busy' : ''}`} ref={wrapRef} aria-busy={busy}>
+      {busy && (
+        <div className="google-btn-loading" role="status">
+          <span className="auth-spinner" aria-hidden="true" />
+          <span>{mode === 'signup' ? 'Creating your account…' : 'Signing you in…'}</span>
+        </div>
+      )}
       <GoogleLogin
         key={buttonWidth}
         onSuccess={async (response) => {
+          setBusy(true);
+          onError?.('');
           try {
-            const user = await loginWithGoogle(response.credential);
+            const user = await loginWithGoogle(response.credential, mode);
             onSuccessNavigate?.(user);
           } catch (err) {
+            setBusy(false);
             onError?.(err.message || 'Google sign-in failed');
           }
         }}
-        onError={() => onError?.('Google sign-in was cancelled or failed')}
+        onError={() => {
+          setBusy(false);
+          onError?.('Google sign-in was cancelled or failed');
+        }}
         useOneTap={false}
         theme="outline"
         size="large"
-        text="continue_with"
+        text={mode === 'signup' ? 'signup_with' : 'signin_with'}
         shape="rectangular"
         width={String(buttonWidth)}
       />

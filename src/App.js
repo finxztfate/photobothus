@@ -11,6 +11,7 @@ import About from './pages/About';
 import Faq from './pages/Faq';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Welcome from './pages/Welcome';
 import MyGallery from './pages/MyGallery';
 import {
   EventHostListPage,
@@ -104,6 +105,7 @@ function App() {
               <Route path="/faq" element={<SitePage className="page-faq" {...navProps}><Faq /></SitePage>} />
               <Route path="/login" element={<SitePage className="page-home" {...navProps}><Login /></SitePage>} />
               <Route path="/signup" element={<SitePage className="page-home" {...navProps}><Signup /></SitePage>} />
+              <Route path="/welcome" element={<SitePage className="page-home" {...navProps}><Welcome /></SitePage>} />
               <Route path="/gallery" element={<SitePage className="page-home" {...navProps}><MyGallery /></SitePage>} />
               {/* Host event management (logged-in customer) */}
               <Route path="/events" element={<SitePage className="page-home" {...navProps}><EventHostListPage /></SitePage>} />

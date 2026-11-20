@@ -11,9 +11,12 @@ function Login() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>Log in with Google</h1>
-        <p className="auth-subtitle">Access your gallery and event dashboard.</p>
+        <p className="auth-subtitle">
+          Use an existing Photobothus account. Choosing a Google account here will not create a new one.
+        </p>
         {error && <p className="auth-error">{error}</p>}
         <GoogleSignInButton
+          mode="login"
           onSuccessNavigate={(user) => navigate(user.role === 'admin' ? '/admin' : '/')}
           onError={setError}
         />

@@ -1,9 +1,9 @@
 const bcrypt = require('bcryptjs');
 const express = require('express');
-const { OAuth2Client } = require('google-auth-library');
 const { pool } = require('../db');
 const { DEFAULT_ADMIN_PASSWORD, signToken, publicUser, requireAuth } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
+const googleIdentity = require('../utils/googleIdentity');
 
 const router = express.Router();
 
@@ -11,7 +11,6 @@ const router = express.Router();
 function isLiveSite() {
   return process.env.NODE_ENV === 'production' || Boolean(process.env.RAILWAY_ENVIRONMENT);
 }
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Password login is the admin entry point, so slow down guessing:
 // 10 failed attempts per IP, then a 15-minute wait. Successful logins don't count.
@@ -43,18 +42,18 @@ async function findUserByGoogleId(googleId) {
 router.post('/google', async (req, res) => {
   try {
     const credential = String(req.body.credential || '').trim();
+    const mode = String(req.body.mode || 'login').trim().toLowerCase();
     if (!credential) {
       return res.status(400).json({ error: 'Google credential is required' });
+    }
+    if (mode !== 'login' && mode !== 'signup') {
+      return res.status(400).json({ error: 'Google mode must be login or signup' });
     }
     if (!process.env.GOOGLE_CLIENT_ID) {
       return res.status(500).json({ error: 'GOOGLE_CLIENT_ID is not configured on the server' });
     }
 
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
+    const payload = await googleIdentity.verifyGoogleIdToken(credential);
     if (!payload?.email || !payload.sub) {
       return res.status(401).json({ error: 'Invalid Google token' });
     }
@@ -67,34 +66,44 @@ router.post('/google', async (req, res) => {
     let user = await findUserByGoogleId(googleId);
     if (!user) {
       user = await findUserByEmail(email);
-      if (user) {
-        if (user.role === 'admin') {
-          return res.status(403).json({ error: 'Admin accounts must use password login' });
-        }
+    }
+
+    if (user?.role === 'admin') {
+      return res.status(403).json({ error: 'Admin accounts must use password login' });
+    }
+
+    if (mode === 'login') {
+      if (!user) {
+        return res.status(404).json({
+          error: 'No Photobothus account for this Google account. Sign up first.',
+        });
+      }
+      if (!user.google_id) {
         await pool.query(
           'UPDATE users SET google_id = ?, display_name = COALESCE(display_name, ?), avatar_url = ? WHERE id = ?',
           [googleId, displayName, avatarUrl, user.id]
         );
         user = await findUserByGoogleId(googleId);
-      } else {
-        const [result] = await pool.query(
-          `INSERT INTO users (email, password_hash, google_id, display_name, avatar_url, role)
-           VALUES (?, NULL, ?, ?, ?, 'customer')`,
-          [email, googleId, displayName, avatarUrl]
-        );
-        user = {
-          id: result.insertId,
-          email,
-          display_name: displayName,
-          avatar_url: avatarUrl,
-          role: 'customer',
-          created_at: new Date(),
-        };
       }
-    }
-
-    if (user.role === 'admin') {
-      return res.status(403).json({ error: 'Admin accounts must use password login' });
+    } else {
+      if (user) {
+        return res.status(409).json({
+          error: 'This Google account already has a Photobothus account. Log in instead.',
+        });
+      }
+      const [result] = await pool.query(
+        `INSERT INTO users (email, password_hash, google_id, display_name, avatar_url, role)
+         VALUES (?, NULL, ?, ?, ?, 'customer')`,
+        [email, googleId, displayName, avatarUrl]
+      );
+      user = {
+        id: result.insertId,
+        email,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        role: 'customer',
+        created_at: new Date(),
+      };
     }
 
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);

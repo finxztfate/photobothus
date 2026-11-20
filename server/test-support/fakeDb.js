@@ -35,8 +35,32 @@ function createFakeDb() {
     // ---- users
     [/^SELECT id, email, display_name, avatar_url, role, created_at FROM users WHERE id = \?/, ([id]) =>
       [tables.users.filter((u) => u.id === Number(id))]],
+    [/^SELECT id, email, password_hash, google_id, display_name, avatar_url, role, created_at FROM users WHERE google_id = \?/, ([googleId]) =>
+      [tables.users.filter((u) => u.google_id === googleId)]],
+    [/^SELECT id, email, password_hash, google_id, display_name, avatar_url, role, created_at FROM users WHERE email = \?/, ([email]) =>
+      [tables.users.filter((u) => u.email === email)]],
     [/^SELECT id, email, password_hash, display_name, avatar_url, role, created_at FROM users WHERE email = \?/, ([email]) =>
       [tables.users.filter((u) => u.email === email)]],
+    [/^UPDATE users SET google_id = \?, display_name = COALESCE\(display_name, \?\), avatar_url = \? WHERE id = \?/, ([googleId, displayName, avatarUrl, id]) => {
+      const user = tables.users.find((u) => u.id === Number(id));
+      if (user) {
+        user.google_id = googleId;
+        if (!user.display_name) user.display_name = displayName;
+        user.avatar_url = avatarUrl;
+      }
+      return [{ affectedRows: user ? 1 : 0 }];
+    }],
+    [/^INSERT INTO users \(email, password_hash, google_id, display_name, avatar_url, role\)/, ([email, googleId, displayName, avatarUrl]) => {
+      const row = insert('users', {
+        email,
+        password_hash: null,
+        google_id: googleId,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        role: 'customer',
+      });
+      return [{ insertId: row.id }];
+    }],
     [/^SELECT id, email, role, password_hash FROM users WHERE id = \?/, ([id]) =>
       [tables.users.filter((u) => u.id === Number(id))]],
     [/^UPDATE users SET last_login_at = NOW\(\) WHERE id = \?/, () => [{ affectedRows: 1 }]],
@@ -267,7 +291,7 @@ function createFakeDb() {
   return {
     tables,
     query,
-    addUser: (row) => insert('users', { display_name: null, avatar_url: null, password_hash: null, role: 'customer', ...row }),
+    addUser: (row) => insert('users', { display_name: null, avatar_url: null, password_hash: null, google_id: null, role: 'customer', ...row }),
     addEvent: (row) =>
       insert('events', {
         host_name: null, event_date: null, starts_at: null, ends_at: null, location: null,

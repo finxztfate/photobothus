@@ -47,10 +47,10 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential) => {
+  const loginWithGoogle = useCallback(async (credential, mode = 'login') => {
     const data = await apiRequest('/api/auth/google', {
       method: 'POST',
-      body: { credential },
+      body: { credential, mode },
     });
     setAuth(data.token, data.user);
     setUser(data.user);
