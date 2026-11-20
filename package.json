@@ -26,7 +26,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "npm --prefix server run dev",
-    "server:install": "npm --prefix server install"
+    "server:install": "npm --prefix server install",
+    "postinstall": "npm --prefix server ci --omit=dev"
   },
   "proxy": "http://127.0.0.1:4000",
   "eslintConfig": {
