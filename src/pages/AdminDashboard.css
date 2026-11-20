@@ -125,8 +125,9 @@
   gap: 16px;
   padding: 18px 28px;
   color: var(--nav-text);
-  position: relative;
-  z-index: 5;
+  position: sticky;
+  top: 0;
+  z-index: 40;
   border: none;
   background: var(--bg-header);
   box-shadow: none;
@@ -155,10 +156,16 @@
   color: var(--nav-text);
 }
 
+.admin-topbar .nav-profile-btn,
+.admin-topbar .nav-profile-menu {
+  border-radius: 0;
+}
+
 .admin-body {
   flex: 1;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
+  align-items: stretch;
   min-height: 0;
   width: 100%;
 }
@@ -167,15 +174,17 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 22px 14px 24px 16px;
-  margin: 20px 8px 24px 16px;
-  background: transparent;
+  padding: 28px 16px 28px 18px;
+  background: var(--bg-header);
+  color: var(--nav-text);
   border: none;
+  border-right: 1px solid rgba(255, 237, 211, 0.12);
   box-shadow: none;
+  border-radius: 0;
   position: sticky;
-  top: 16px;
-  align-self: flex-start;
-  min-height: 0;
+  top: 0;
+  align-self: stretch;
+  min-height: 100%;
 }
 
 .admin-aside-label {
@@ -185,39 +194,39 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--hiw-subheading);
+  color: rgba(255, 237, 211, 0.55);
 }
 
 .admin-aside-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .admin-aside-nav a {
-  color: var(--text-muted);
+  color: rgba(255, 237, 211, 0.72);
   text-decoration: none;
   font-family: var(--font-subheading);
   font-weight: 700;
   font-size: 0.84rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 0;
   border: none;
   background: transparent;
   box-shadow: inset 3px 0 0 transparent;
-  transition: color 0.15s ease, box-shadow 0.15s ease;
+  transition: color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .admin-aside-nav a:hover {
-  color: var(--text-heading);
-  background: transparent;
+  color: var(--nav-text);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .admin-aside-nav a.is-active {
-  color: var(--text-heading);
-  background: transparent;
+  color: var(--nav-text);
+  background: rgba(232, 163, 61, 0.14);
   border: none;
   box-shadow: inset 3px 0 0 var(--accent);
 }
@@ -225,9 +234,9 @@
 .admin-aside-user {
   margin: auto 8px 0;
   padding-top: 14px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid rgba(255, 237, 211, 0.12);
   font-size: 0.78rem;
-  color: var(--admin-muted);
+  color: rgba(255, 237, 211, 0.55);
   word-break: break-all;
 }
 
@@ -883,7 +892,6 @@
   cursor: not-allowed;
 }
 
-.admin-shell .admin-aside,
 .admin-shell .dash-welcome,
 .admin-shell .admin-header,
 .admin-shell .dash-card,
@@ -892,7 +900,7 @@
   background:
     linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
     var(--admin-outline) border-box;
-  border-radius: 16px;
+  border-radius: 0;
 }
 
 .admin-shell .admin-header {
@@ -956,13 +964,10 @@
     z-index: 100;
     width: min(288px, 88vw);
     min-height: 100dvh;
-    margin: 0;
     padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
-    background:
-      linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
-      var(--admin-outline) border-box;
-    border: 1.5px solid transparent;
-    border-radius: 0 16px 16px 0;
+    background: var(--bg-header);
+    border: none;
+    border-right: 1px solid rgba(255, 237, 211, 0.12);
     box-shadow: 8px 0 32px rgba(26, 16, 10, 0.28);
     transform: translateX(-105%);
     transition: transform 0.24s ease;
