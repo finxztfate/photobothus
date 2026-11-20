@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { resolveLayoutId, getLayoutById, getStripPrintSize } from '../data/stripLayouts';
+import { resolveLayoutId, getLayoutById, getStripPrintSize, shouldPrintTwinStrips } from '../data/stripLayouts';
 import { bgColorPresets, buildCustomGradient, getBackgroundPreviewStyle, isCssOnlyBackground } from '../data/editorBackgrounds';
-import { renderStripToCanvas, getDefaultDatePosition, isLightBackground, sheetForPrint, printPhotoboothStrip } from '../utils/stripCompositor';
+import { renderStripToCanvas, getDefaultDatePosition, isLightBackground, printPhotoboothStrip } from '../utils/stripCompositor';
 import { customization } from '../utils/customization';
 import { uploadStrip, getEventGuestKey, apiRequest } from '../utils/api';
 import { trackDataAction } from '../utils/loadingBus';
@@ -454,8 +454,7 @@ function EventEditor() {
     await trackDataAction(async () => {
     const dataUrl = await generateStrip({ forExport: true });
     if (!dataUrl) return;
-    const printUrl = await sheetForPrint(layout, dataUrl);
-    downloadDataUrl(printUrl, `photobooth-strip-${Date.now()}.png`);
+    downloadDataUrl(dataUrl, `photobooth-strip-${Date.now()}.png`);
     });
   };
 
@@ -465,7 +464,7 @@ function EventEditor() {
       try {
         const dataUrl = await generateStrip({ forExport: true });
         if (!dataUrl) return;
-        printPhotoboothStrip(dataUrl, layout);
+        await printPhotoboothStrip(dataUrl, layout);
       } catch (err) {
         setError(err.message || 'Could not print this strip');
       } finally {
@@ -478,10 +477,9 @@ function EventEditor() {
     await trackDataAction(async () => {
       const dataUrl = await generateStrip({ forExport: true });
       if (!dataUrl) return;
-      const printUrl = await sheetForPrint(layout, dataUrl);
       const filename = `photobooth-strip-${Date.now()}.png`;
       try {
-        const file = await dataUrlToFile(printUrl, filename);
+        const file = await dataUrlToFile(dataUrl, filename);
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
           await navigator.share({
             files: [file],
@@ -493,7 +491,7 @@ function EventEditor() {
       } catch (err) {
         if (err?.name === 'AbortError') return;
       }
-      downloadDataUrl(printUrl, filename);
+      downloadDataUrl(dataUrl, filename);
     });
   };
 
@@ -777,7 +775,7 @@ function EventEditor() {
           {layoutName} · up to {maxGuestUploads} uploads
           {uploadsRemaining != null ? ` (${uploadsRemaining} left)` : ''}
         </p>
-        <StripPrintSpec size={printSize} className="edit-print-spec--hero" />
+        <StripPrintSpec size={printSize} twin={shouldPrintTwinStrips(layout || 1)} className="edit-print-spec--hero" />
       </div>
 
       {(saveMessage || error) && (

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { resolveLayoutId, getLayoutById, getStripPrintSize } from '../data/stripLayouts';
+import { resolveLayoutId, getLayoutById, getStripPrintSize, shouldPrintTwinStrips } from '../data/stripLayouts';
 import { bgColorPresets, buildCustomGradient, getBackgroundPreviewStyle, isCssOnlyBackground } from '../data/editorBackgrounds';
-import { renderStripToCanvas, getDefaultDatePosition, isLightBackground, sheetForPrint, printPhotoboothStrip } from '../utils/stripCompositor';
+import { renderStripToCanvas, getDefaultDatePosition, isLightBackground, printPhotoboothStrip } from '../utils/stripCompositor';
 import { customization } from '../utils/customization';
 import { uploadStrip } from '../utils/api';
 import { trackDataAction } from '../utils/loadingBus';
@@ -299,8 +299,7 @@ function EditPage() {
     try {
       const dataUrl = await generateStrip({ forExport: true });
       if (!dataUrl) return;
-      const printUrl = await sheetForPrint(layout, dataUrl);
-      downloadDataUrl(printUrl, `photobooth-strip-${Date.now()}.png`);
+      downloadDataUrl(dataUrl, `photobooth-strip-${Date.now()}.png`);
       setHasDownloaded(true);
       setJustSaved(true);
       window.clearTimeout(savedTimerRef.current);
@@ -317,7 +316,7 @@ function EditPage() {
       try {
         const dataUrl = await generateStrip({ forExport: true });
         if (!dataUrl) return;
-        printPhotoboothStrip(dataUrl, layout);
+        await printPhotoboothStrip(dataUrl, layout);
         setHasDownloaded(true);
       } catch (err) {
         setError(err.message || 'Could not print this strip');
@@ -628,7 +627,7 @@ function EditPage() {
           </div>
 
           <div className="edit-actions">
-            <StripPrintSpec size={printSize} />
+            <StripPrintSpec size={printSize} twin={shouldPrintTwinStrips(layout)} />
             <button
               type="button"
               className={`edit-download edit-action-primary edit-export-btn${justSaved ? ' is-saved' : ''}`}

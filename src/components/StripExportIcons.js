@@ -49,12 +49,15 @@ export function IconUpload() {
   );
 }
 
-export function StripPrintSpec({ size, className = '' }) {
+export function StripPrintSpec({ size, twin = false, className = '' }) {
   return (
     <div className={`edit-print-spec ${className}`.trim()}>
       <span className="edit-print-spec-kicker">Photobooth strip</span>
       <strong className="edit-print-spec-size">{size.label}</strong>
       <span className="edit-print-spec-dpi">{size.dpi} DPI</span>
+      {twin ? (
+        <span className="edit-print-spec-pair">Print places two copies on one sheet to cut</span>
+      ) : null}
     </div>
   );
 }

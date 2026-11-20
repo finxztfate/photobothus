@@ -6,6 +6,7 @@ import {
 import {
   STRIP_CUT_GAP,
   STRIP_PADDING,
+  STRIP_PRINT_DPI,
   getStripPrintSize,
   shouldPrintTwinStrips,
   stripPlacementOptions,
@@ -338,11 +339,15 @@ export async function sheetForPrint(layoutId, stripDataUrl) {
   return composeTwinStripSheet(stripDataUrl);
 }
 
-/** Open the browser print dialog at the strip's real 300 DPI size (e.g. 2×6 in). */
-export function printPhotoboothStrip(stripDataUrl, layoutId) {
+/** Print the cut sheet (twin copies when the layout is a tall strip) at 300 DPI. */
+export async function printPhotoboothStrip(stripDataUrl, layoutId) {
   if (!stripDataUrl) return;
 
-  const { widthIn, heightIn } = getStripPrintSize(layoutId);
+  const sheetUrl = await sheetForPrint(layoutId, stripDataUrl);
+  const sheetImage = await loadImage(sheetUrl);
+  const fallback = getStripPrintSize(layoutId);
+  const widthIn = sheetImage?.width ? sheetImage.width / STRIP_PRINT_DPI : fallback.widthIn;
+  const heightIn = sheetImage?.height ? sheetImage.height / STRIP_PRINT_DPI : fallback.heightIn;
   const iframe = document.createElement('iframe');
   iframe.title = 'Print photo strip';
   iframe.setAttribute('aria-hidden', 'true');
@@ -389,6 +394,6 @@ export function printPhotoboothStrip(stripDataUrl, layoutId) {
     win.print();
   };
   img.onerror = cleanup;
-  img.src = stripDataUrl;
+  img.src = sheetUrl;
   doc.body.appendChild(img);
 }
