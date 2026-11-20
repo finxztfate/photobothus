@@ -5,10 +5,19 @@ export function isMobileViewport() {
 
 export function enterMobileFullscreen(node) {
   if (typeof window === 'undefined' || !isMobileViewport()) return Promise.resolve();
+  if (document.fullscreenElement || document.webkitFullscreenElement) return Promise.resolve();
   const el = node || document.documentElement;
-  const request = el.requestFullscreen || el.webkitRequestFullscreen;
-  if (!request) return Promise.resolve();
-  return Promise.resolve(request.call(el)).catch(() => {});
+  try {
+    if (el.requestFullscreen) {
+      return Promise.resolve(el.requestFullscreen({ navigationUI: 'hide' })).catch(() => {});
+    }
+    if (el.webkitRequestFullscreen) {
+      return Promise.resolve(el.webkitRequestFullscreen()).catch(() => {});
+    }
+  } catch {
+    return Promise.resolve();
+  }
+  return Promise.resolve();
 }
 
 export function exitMobileFullscreen() {

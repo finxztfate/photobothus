@@ -11,6 +11,7 @@ import {
   getLayoutPhotoCount,
   resolveLayoutId,
 } from '../data/stripLayouts';
+import { enterMobileFullscreen } from '../utils/mobileFullscreen';
 import './EventPhotobooth.css';
 
 const LIVE_FILTERS = ['normal', 'bwfilm', 'vintage', 'seventies'];
@@ -58,14 +59,10 @@ function EventPhotobooth() {
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [mirrored, setMirrored] = useState(true);
+  const [videoAspect, setVideoAspect] = useState(4 / 3);
 
   useEffect(() => {
-    getAvailableCameras().then((cameras) => {
-      setAvailableCameras(cameras);
-      if (cameras.length > 0) {
-        setSelectedCamera((prev) => prev || cameras[0].id);
-      }
-    });
+    getAvailableCameras().then(setAvailableCameras);
   }, []);
 
   useEffect(() => () => {
@@ -130,6 +127,7 @@ function EventPhotobooth() {
   }, [mirrored, retakeIndex, selectedFilter, slotCount]);
 
   const startCountdown = useCallback(() => {
+    enterMobileFullscreen();
     if (capturingRef.current || countdown != null) return;
     if (timerSeconds <= 0) {
       takeShot();
@@ -171,7 +169,7 @@ function EventPhotobooth() {
   const switchCamera = () => {
     if (availableCameras.length < 2) return;
     const currentIndex = availableCameras.findIndex((c) => c.id === selectedCamera);
-    const nextIndex = (currentIndex + 1) % availableCameras.length;
+    const nextIndex = currentIndex < 0 ? 1 % availableCameras.length : (currentIndex + 1) % availableCameras.length;
     setSelectedCamera(availableCameras[nextIndex].id);
   };
 
@@ -180,8 +178,13 @@ function EventPhotobooth() {
     setScene('capture');
   };
 
+  const onBoothInteract = (event) => {
+    if (event.target instanceof Element && event.target.closest('.event-booth-back')) return;
+    enterMobileFullscreen();
+  };
+
   return (
-    <div className="event-mobile-booth">
+    <div className="event-mobile-booth" onPointerDown={onBoothInteract}>
       <div className="event-mobile-phone">
         {scene === 'review' ? (
           <div className="event-booth-review">
@@ -247,15 +250,21 @@ function EventPhotobooth() {
             </div>
 
             <div className="event-booth-stage">
-              <div className="event-booth-viewfinder is-contain">
+              <div
+                className="event-booth-viewfinder"
+                style={{ '--booth-camera-aspect': String(videoAspect) }}
+              >
                 <Camera
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
                   mirrored={mirrored}
                   orientation="portrait"
-                  objectFit="contain"
+                  objectFit="cover"
                   deviceId={selectedCamera}
                   onError={setCameraError}
+                  onVideoDimensionsChange={({ aspect }) => {
+                    if (aspect > 0) setVideoAspect(aspect);
+                  }}
                   showFullscreenButton={false}
                   sharp
                 />
