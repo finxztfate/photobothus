@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getLayoutById, getStripPrintSize } from '../data/stripLayouts';
+import { exitMobileFullscreen } from '../utils/mobileFullscreen';
 import './CustomFrameModal.css';
 
 function readImageFile(file, onLoad) {
@@ -22,13 +23,23 @@ function CustomFrameModal({
   const [fileName, setFileName] = useState('');
   const [dragging, setDragging] = useState(false);
 
+  const close = useCallback(() => {
+    exitMobileFullscreen();
+    onClose();
+  }, [onClose]);
+
+  const apply = () => {
+    onApply();
+    exitMobileFullscreen();
+  };
+
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') close();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [close]);
 
   const takeFile = (file) => {
     readImageFile(file, (dataUrl, name) => {
@@ -38,14 +49,14 @@ function CustomFrameModal({
   };
 
   return (
-    <div className="frame-modal" role="dialog" aria-modal="true" aria-labelledby="frame-modal-title" onClick={onClose}>
+    <div className="frame-modal" role="dialog" aria-modal="true" aria-labelledby="frame-modal-title" onClick={close}>
       <div className="frame-modal-card" onClick={(event) => event.stopPropagation()}>
         <header className="frame-modal-head">
           <div>
             <p className="frame-modal-kicker">Custom artwork</p>
             <h2 id="frame-modal-title">Add a frame</h2>
           </div>
-          <button type="button" className="frame-modal-x" onClick={onClose} aria-label="Close">
+          <button type="button" className="frame-modal-x" onClick={close} aria-label="Close">
             ✕
           </button>
         </header>
@@ -104,10 +115,10 @@ function CustomFrameModal({
         </div>
 
         <footer className="frame-modal-foot">
-          <button type="button" className="frame-modal-cancel" onClick={onClose}>
+          <button type="button" className="frame-modal-cancel" onClick={close}>
             Cancel
           </button>
-          <button type="button" className="frame-modal-apply" onClick={onApply} disabled={!canApply}>
+          <button type="button" className="frame-modal-apply" onClick={apply} disabled={!canApply}>
             Use this frame
           </button>
         </footer>

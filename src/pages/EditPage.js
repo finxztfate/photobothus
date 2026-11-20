@@ -11,6 +11,7 @@ import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
 import CustomFrameModal from '../components/CustomFrameModal';
+import { enterMobileFullscreen } from '../utils/mobileFullscreen';
 import {
   IconDownload,
   IconGallery,
@@ -554,7 +555,14 @@ function EditPage() {
                 <h4>Custom frame</h4>
                 <p>Use your own PNG artwork as the strip background.</p>
               </div>
-              <button type="button" className="edit-outline-btn" onClick={() => setIsCustomModalOpen(true)}>
+              <button
+                type="button"
+                className="edit-outline-btn"
+                onClick={() => {
+                  setIsCustomModalOpen(true);
+                  enterMobileFullscreen();
+                }}
+              >
                 Upload
               </button>
             </div>

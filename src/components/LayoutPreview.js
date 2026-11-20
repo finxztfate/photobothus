@@ -4,8 +4,12 @@ function LayoutPreview({
   layout: layoutProp,
   photos = [],
   className = '',
+  onPhotoClick,
+  activePhotoIndex = null,
+  emptyLabel = false,
 }) {
   const layout = typeof layoutProp === 'object' ? layoutProp : getLayoutById(layoutProp);
+  const interactive = typeof onPhotoClick === 'function';
 
   let photoCursor = 0;
 
@@ -18,6 +22,7 @@ function LayoutPreview({
         gridTemplateRows: layout.rows,
         gridTemplateColumns: layout.columns,
       }}
+      aria-label={interactive ? 'Captured photos' : undefined}
     >
       {layout.cells.map((cell) => {
         if (cell.type === 'dark') {
@@ -30,13 +35,41 @@ function LayoutPreview({
           );
         }
 
-        const photo = photos[cell.photoIndex ?? photoCursor];
+        const photoIndex = cell.photoIndex ?? photoCursor;
         if (cell.photoIndex == null) photoCursor += 1;
+        const photo = photos[photoIndex];
+        const isCurrent = activePhotoIndex === photoIndex;
+        const classNameCell = [
+          'layout-cell',
+          'layout-cell--photo',
+          photo ? '' : 'is-empty',
+          isCurrent ? 'is-current' : '',
+        ].filter(Boolean).join(' ');
+
+        if (interactive) {
+          return (
+            <button
+              key={cell.area}
+              type="button"
+              className={classNameCell}
+              style={{ gridArea: cell.area }}
+              disabled={!photo}
+              onClick={() => onPhotoClick(photoIndex)}
+              aria-label={photo ? `Retake shot ${photoIndex + 1}` : `Shot ${photoIndex + 1} empty`}
+            >
+              {photo?.src ? (
+                <img src={photo.src} alt="" className="layout-cell-img" />
+              ) : emptyLabel ? (
+                <span className="layout-cell-index">{photoIndex + 1}</span>
+              ) : null}
+            </button>
+          );
+        }
 
         return (
           <span
             key={cell.area}
-            className="layout-cell layout-cell--photo"
+            className={classNameCell}
             style={{ gridArea: cell.area }}
           >
             {photo?.src ? (

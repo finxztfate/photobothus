@@ -205,10 +205,15 @@ body {
   color: var(--text-body);
 }
 
-.page-photobooth-wrapper .photobooth-page {
+.page-photobooth-wrapper .photobooth-page,
+.page-photobooth-wrapper .event-mobile-booth {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.page-photobooth-wrapper:has(.public-mobile-booth) {
+  background: #0c0a09;
 }
 
 .page-event-photobooth-wrapper {

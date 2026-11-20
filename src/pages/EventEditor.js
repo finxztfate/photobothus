@@ -12,6 +12,7 @@ import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
 import CustomFrameModal from '../components/CustomFrameModal';
+import { enterMobileFullscreen } from '../utils/mobileFullscreen';
 import {
   IconDownload,
   IconPrint,
@@ -877,7 +878,16 @@ function EventEditor() {
           <div className="edit-panel edit-panel--custom">
             <h4>Custom frame</h4>
             <p>Upload your own border artwork as a PNG background.</p>
-            <button type="button" className="custom-frame-btn" onClick={() => setIsCustomModalOpen(true)}>Upload frame</button>
+            <button
+              type="button"
+              className="custom-frame-btn"
+              onClick={() => {
+                setIsCustomModalOpen(true);
+                enterMobileFullscreen();
+              }}
+            >
+              Upload frame
+            </button>
           </div>
         </aside>
       </div>

@@ -11,7 +11,9 @@ import { applyBoothFilterToImageSrc } from '../utils/captureFrame';
 import './Home.css';
 import './Photobooth.css';
 import Camera from '../components/Camera';
-import RetroFrameOverlay from '../components/RetroFrameOverlay';
+import LayoutPreview from '../components/LayoutPreview';
+import PhotoboothMobile from './PhotoboothMobile';
+import useIsMobileBooth from '../hooks/useIsMobileBooth';
 
 const COLOR_FILTERS = filterPresets.filter((preset) => !preset.frame);
 
@@ -23,7 +25,13 @@ function delay(ms) {
   });
 }
 
-function Photobooth({ theme, toggleTheme }) {
+function Photobooth(props) {
+  const isMobileBooth = useIsMobileBooth();
+  if (isMobileBooth) return <PhotoboothMobile />;
+  return <PhotoboothDesktop {...props} />;
+}
+
+function PhotoboothDesktop({ theme, toggleTheme }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const layoutParam = searchParams.get('layout');
@@ -100,7 +108,7 @@ function Photobooth({ theme, toggleTheme }) {
 
     const imageSrc = await webcamRef.current?.captureBooth({
       settleMs: 100,
-      mirrored: false,
+      mirrored: isMirrored,
     });
     if (!imageSrc) return false;
 
@@ -109,7 +117,7 @@ function Photobooth({ theme, toggleTheme }) {
       { id: Date.now() + Math.random(), src: imageSrc, filter: 'none', frame: activeFrame },
     ]);
     return true;
-  }, [activeFrame]);
+  }, [activeFrame, isMirrored]);
 
   const resetSession = useCallback(() => {
     setCapturedPhotos([]);
@@ -352,18 +360,15 @@ function Photobooth({ theme, toggleTheme }) {
               frameIndex={Math.min(capturedPhotos.length, slotCount - 1)}
               sharp
             />
+            {capturedPhotos.length > 0 && (
+              <LayoutPreview
+                layout={layout}
+                photos={capturedPhotos}
+                className="booth-strip-overlay"
+                emptyLabel
+              />
+            )}
           </div>
-
-          <section className="booth-shots" aria-label="Captured photos">
-            <div className="booth-thumbs">
-              {capturedPhotos.map((photo, index) => (
-                <div key={photo.id} className="booth-thumb">
-                  <img src={photo.src} alt={`Capture ${index + 1}`} />
-                  <RetroFrameOverlay frameId={photo.frame} index={index} />
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
 
         <div className="booth-actions">

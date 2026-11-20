@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import Camera from '../components/Camera';
+import LayoutPreview from '../components/LayoutPreview';
 import {
   getAvailableCameras,
   getFilterFrame,
@@ -10,10 +11,10 @@ import {
   getLayoutPhotoCount,
   resolveLayoutId,
 } from '../data/stripLayouts';
+import useIsMobileBooth from '../hooks/useIsMobileBooth';
 import './EventPhotobooth.css';
 
 const LIVE_FILTERS = ['normal', 'bwfilm', 'vintage', 'seventies'];
-const VIEWFINDER_ASPECT = 3 / 4;
 const TIMER_CYCLE = [3, 5, 0];
 
 function nextTimer(seconds) {
@@ -34,6 +35,8 @@ function liveFilterLabel(id) {
 }
 
 function EventPhotobooth() {
+  const isMobileBooth = useIsMobileBooth();
+  const boothFit = isMobileBooth ? 'cover' : 'contain';
   const { event, code } = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -75,6 +78,7 @@ function EventPhotobooth() {
   const shotNumber = retakeIndex != null
     ? retakeIndex + 1
     : Math.min(capturedPhotos.length + 1, slotCount);
+  const canCapture = retakeIndex != null || capturedPhotos.length < slotCount;
 
   const goEditor = useCallback((photos) => {
     navigate(`/e/${code}/editor`, {
@@ -95,9 +99,8 @@ function EventPhotobooth() {
     window.setTimeout(() => setFlash(false), 180);
     try {
       const dataUrl = await cameraRef.current.captureBooth({
-        aspect: VIEWFINDER_ASPECT,
-        fit: 'contain',
-        mirrored: false,
+        fit: boothFit,
+        mirrored,
         settleMs: 50,
       });
       if (!dataUrl) {
@@ -118,8 +121,7 @@ function EventPhotobooth() {
         } else {
           next = [...prev, photo].slice(0, slotCount);
         }
-        const finishedRetake = retakeIndex != null;
-        if (finishedRetake || next.length >= slotCount) {
+        if (retakeIndex == null && next.length >= slotCount) {
           setScene('review');
         }
         return next;
@@ -129,7 +131,7 @@ function EventPhotobooth() {
       capturingRef.current = false;
       setIsCapturing(false);
     }
-  }, [retakeIndex, selectedFilter, slotCount]);
+  }, [boothFit, mirrored, retakeIndex, selectedFilter, slotCount]);
 
   const startCountdown = useCallback(() => {
     if (capturingRef.current || countdown != null) return;
@@ -156,7 +158,7 @@ function EventPhotobooth() {
     const onKeyDown = (event) => {
       if (event.code !== 'Space' && event.key !== ' ') return;
       if (event.repeat) return;
-      if (scene !== 'capture' || isCapturing || countdown != null || capturedPhotos.length >= slotCount) {
+      if (scene !== 'capture' || isCapturing || countdown != null || !canCapture) {
         return;
       }
       const target = event.target;
@@ -168,7 +170,7 @@ function EventPhotobooth() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [scene, isCapturing, countdown, capturedPhotos.length, slotCount, startCountdown]);
+  }, [scene, isCapturing, countdown, canCapture, startCountdown]);
 
   const switchCamera = () => {
     if (availableCameras.length < 2) return;
@@ -249,21 +251,32 @@ function EventPhotobooth() {
             </div>
 
             <div className="event-booth-stage">
-              <div className="event-booth-viewfinder">
+              <div className={`event-booth-viewfinder${boothFit === 'contain' ? ' is-contain' : ''}`}>
                 <Camera
                   ref={cameraRef}
                   selectedFilter={selectedFilter}
                   mirrored={mirrored}
                   orientation="portrait"
-                  objectFit="contain"
+                  objectFit={boothFit}
                   deviceId={selectedCamera}
                   onError={setCameraError}
+                  showFullscreenButton={false}
                   sharp
                 />
                 {countdown != null && (
                   <div className="event-booth-countdown" aria-live="assertive">{countdown}</div>
                 )}
                 {flash && <div className="event-booth-flash" />}
+                {capturedPhotos.length > 0 && (
+                  <LayoutPreview
+                    layout={layout}
+                    photos={capturedPhotos}
+                    className="event-booth-strip-preview"
+                    onPhotoClick={setRetakeIndex}
+                    activePhotoIndex={retakeIndex ?? capturedPhotos.length}
+                    emptyLabel
+                  />
+                )}
               </div>
             </div>
 
@@ -299,7 +312,7 @@ function EventPhotobooth() {
                 <button
                   type="button"
                   className="event-booth-shutter"
-                  disabled={isCapturing || countdown != null || capturedPhotos.length >= slotCount}
+                  disabled={isCapturing || countdown != null || !canCapture}
                   onClick={startCountdown}
                   aria-label="Take photo"
                 />

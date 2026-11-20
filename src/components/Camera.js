@@ -177,6 +177,7 @@ const Camera = forwardRef(function Camera(
     deviceId = null,
     objectFit = 'cover',
     orientation = 'landscape',
+    showFullscreenButton = true,
     onError = null,
     onSwitchCamera = null,
     onVideoDimensionsChange = null,
@@ -189,6 +190,7 @@ const Camera = forwardRef(function Camera(
   const internalWebcamRef = useRef(null);
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [constraintTier, setConstraintTier] = useState(0);
 
   const toggleFullscreen = async () => {
     const el = containerRef.current;
@@ -234,24 +236,40 @@ const Camera = forwardRef(function Camera(
     };
   }, []);
 
+  useEffect(() => {
+    setConstraintTier(0);
+  }, [deviceId, orientation]);
+
   const getVideoConstraints = () => {
     const portrait = orientation === 'portrait';
-    const constraints = portrait
-      ? {
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-        }
-      : {
-          width: { ideal: 1280 },
-          height: { ideal: 960 },
-          aspectRatio: { ideal: 4 / 3 },
-        };
-    if (deviceId) {
+    const constraints = {};
+    if (deviceId && constraintTier < 3) {
       constraints.deviceId = { exact: deviceId };
     } else {
       constraints.facingMode = { ideal: 'user' };
     }
+    if (constraintTier === 0) {
+      if (portrait) {
+        constraints.width = { ideal: 1080 };
+        constraints.height = { ideal: 1920 };
+      } else {
+        constraints.width = { ideal: 1280 };
+        constraints.height = { ideal: 960 };
+        constraints.aspectRatio = { ideal: 4 / 3 };
+      }
+    } else if (constraintTier === 1) {
+      constraints.width = { ideal: 1280 };
+      constraints.height = { ideal: 720 };
+    }
     return constraints;
+  };
+
+  const handleUserMediaError = (err) => {
+    if (constraintTier < 3) {
+      setConstraintTier((tier) => tier + 1);
+      return;
+    }
+    onError?.(err?.message || 'Camera unavailable');
   };
 
   const getVideoElementRaw = () => {
@@ -349,11 +367,22 @@ const Camera = forwardRef(function Camera(
     },
     captureBooth: async (options = {}) => {
       const videoEl = getVideoEl();
+      const previewEl = options.previewEl || containerRef.current;
       const filterCss = filters[selectedFilter] || filters.normal;
+      const boxW = previewEl?.clientWidth || 0;
+      const boxH = previewEl?.clientHeight || 0;
+      const visibleAspect = boxW > 2 && boxH > 2 ? boxW / boxH : undefined;
+      const videoNode = videoEl || previewEl?.querySelector?.('video');
+      const computedFit = videoNode ? getComputedStyle(videoNode).objectFit : objectFit;
+      const visibleFit = computedFit === 'contain' ? 'contain' : 'cover';
       return captureBoothFrame(videoEl, {
         filterCss,
         mirrored,
+        fit: visibleFit,
+        aspect: visibleAspect,
         ...options,
+        fit: options.fit ?? visibleFit,
+        aspect: options.aspect ?? visibleAspect,
       });
     },
     getVideoElement: () => getVideoEl(),
@@ -365,14 +394,16 @@ const Camera = forwardRef(function Camera(
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <button
-        type="button"
-        className="fullscreen-btn"
-        onClick={toggleFullscreen}
-        aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-      >
-        ⛶
-      </button>
+      {showFullscreenButton && (
+        <button
+          type="button"
+          className="fullscreen-btn"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        >
+          ⛶
+        </button>
+      )}
       {onSwitchCamera && (
         <button
           type="button"
@@ -384,13 +415,14 @@ const Camera = forwardRef(function Camera(
         </button>
       )}
       <Webcam
+        key={`cam-${deviceId || 'default'}-${constraintTier}`}
         ref={internalWebcamRef}
         audio={false}
         screenshotFormat="image/jpeg"
         className="camera-webcam"
         videoConstraints={getVideoConstraints()}
         onUserMedia={handleUserMedia}
-        onUserMediaError={(err) => onError?.(err?.message || 'Camera unavailable')}
+        onUserMediaError={handleUserMediaError}
         onLoadedMetadata={handleVideoReady}
         style={{
           width: '100%',
