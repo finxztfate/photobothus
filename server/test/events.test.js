@@ -7,6 +7,13 @@ const { startTestApp } = require('../test-support/testApp');
 let app;
 let host;
 let otherHost;
+let admin;
+let extraHostN = 0;
+
+function extraHost() {
+  extraHostN += 1;
+  return app.db.addUser({ email: `host-extra-${extraHostN}@x.com` });
+}
 
 const inMinutes = (minutes) => new Date(Date.now() + minutes * 60000).toISOString();
 
@@ -27,6 +34,7 @@ before(async () => {
   app = await startTestApp();
   host = app.db.addUser({ email: 'host@x.com' });
   otherHost = app.db.addUser({ email: 'other@x.com' });
+  admin = app.db.addUser({ email: 'admin@x.com', role: 'admin' });
 });
 
 after(() => app.stop());
@@ -45,13 +53,42 @@ test('creating an event requires every detail except hashtags', async () => {
   const startsAt = inMinutes(-30);
   const endsAt = inMinutes(60);
   const timed = await app.api('POST', '/api/events', {
-    as: host,
+    as: extraHost(),
     body: eventDetails({ name: 'Timed', eventDate: '2026-11-20', startsAt, endsAt }),
   });
   assert.equal(timed.status, 201);
   assert.deepEqual(
     [timed.body.event.eventDate, timed.body.event.startsAt, timed.body.event.endsAt],
     ['2026-11-20', startsAt, endsAt]
+  );
+});
+
+test('admin can turn event creation off', async () => {
+  const user = extraHost();
+  assert.equal(
+    (await app.api('POST', '/api/events', { as: user, body: eventDetails({ name: 'First' }) })).status,
+    201
+  );
+  assert.equal((await app.api('GET', '/api/events', { as: user })).body.canCreate, true);
+
+  const off = await app.api('PATCH', '/api/admin/settings', {
+    as: admin,
+    body: { eventCreationEnabled: false },
+  });
+  assert.equal(off.status, 200);
+  assert.equal(off.body.settings.eventCreationEnabled, false);
+  assert.equal((await app.api('GET', '/api/events', { as: user })).body.canCreate, false);
+  const blocked = await app.api('POST', '/api/events', { as: user, body: eventDetails({ name: 'Second' }) });
+  assert.equal(blocked.status, 403);
+
+  const on = await app.api('PATCH', '/api/admin/settings', {
+    as: admin,
+    body: { eventCreationEnabled: true },
+  });
+  assert.equal(on.body.settings.eventCreationEnabled, true);
+  assert.equal(
+    (await app.api('POST', '/api/events', { as: user, body: eventDetails({ name: 'Second' }) })).status,
+    201
   );
 });
 
@@ -74,12 +111,13 @@ test('a DATE column is sent as the calendar day, not a shifted timestamp', async
 
 test('editing keeps, changes or clears the schedule as asked', async () => {
   const endsAt = inMinutes(90);
+  const owner = extraHost();
   const created = await app.api('POST', '/api/events', {
-    as: host,
+    as: owner,
     body: eventDetails({ name: 'Edit me', eventDate: '2026-11-20', endsAt }),
   });
   const { id } = created.body.event;
-  const patch = (body) => app.api('PATCH', `/api/events/${id}`, { as: host, body });
+  const patch = (body) => app.api('PATCH', `/api/events/${id}`, { as: owner, body });
 
   assert.equal((await patch({ name: 'Renamed' })).body.event.endsAt, endsAt);
   assert.equal((await patch({ name: 'Renamed', endsAt: inMinutes(-1) })).status, 400);
@@ -131,19 +169,20 @@ test('an event closes itself at its end time and stays closed', async () => {
 
 test('ending by hand is permanent', async () => {
   const endsAt = inMinutes(120);
-  const created = await app.api('POST', '/api/events', { as: host, body: eventDetails({ name: 'Manual', endsAt }) });
+  const owner = extraHost();
+  const created = await app.api('POST', '/api/events', { as: owner, body: eventDetails({ name: 'Manual', endsAt }) });
   const { id, code } = created.body.event;
 
   const photo = app.db.addStrip({ event_id: id, image_url: app.storeFile('ended-event.png') });
 
-  const ended = await app.api('PATCH', `/api/events/${id}`, { as: host, body: { isActive: false } });
+  const ended = await app.api('PATCH', `/api/events/${id}`, { as: owner, body: { isActive: false } });
   assert.equal(ended.body.event.isActive, false);
   assert.equal(ended.body.event.stripCount, 1);
   assert.ok(ended.body.event.completedAt);
   assert.equal(app.db.tables.strips.some((strip) => strip.id === photo.id), true);
   assert.equal(fs.existsSync(path.join(app.uploadsDir, 'ended-event.png')), true);
 
-  const reopened = await app.api('PATCH', `/api/events/${id}`, { as: host, body: { isActive: true } });
+  const reopened = await app.api('PATCH', `/api/events/${id}`, { as: owner, body: { isActive: true } });
   assert.equal(reopened.status, 400);
   assert.equal((await app.api('GET', `/api/public/events/${code}`)).body.event.isActive, false);
 });
@@ -189,7 +228,8 @@ test('only the owner can delete an event, and its photos go with it', async () =
 });
 
 test('photo strips stay off until the host turns them on', async () => {
-  const created = await app.api('POST', '/api/events', { as: host, body: eventDetails({ name: 'Photos only' }) });
+  const owner = extraHost();
+  const created = await app.api('POST', '/api/events', { as: owner, body: eventDetails({ name: 'Photos only' }) });
   assert.equal(created.status, 201);
   assert.equal(created.body.event.stripsEnabled, false);
   const { id, code } = created.body.event;
@@ -198,7 +238,7 @@ test('photo strips stay off until the host turns them on', async () => {
   assert.equal(guestOff.body.event.stripsEnabled, false);
 
   const enabled = await app.api('PATCH', `/api/events/${id}`, {
-    as: host,
+    as: owner,
     body: { name: 'Photos only', stripsEnabled: true },
   });
   assert.equal(enabled.status, 200);
@@ -206,7 +246,7 @@ test('photo strips stay off until the host turns them on', async () => {
   assert.equal((await app.api('GET', `/api/public/events/${code}`)).body.event.stripsEnabled, true);
 
   const disabled = await app.api('PATCH', `/api/events/${id}`, {
-    as: host,
+    as: owner,
     body: { name: 'Photos only', stripsEnabled: false },
   });
   assert.equal(disabled.body.event.stripsEnabled, false);

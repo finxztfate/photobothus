@@ -82,6 +82,8 @@ function createFakeDb() {
     }],
 
     // ---- events
+    [/^SELECT COUNT\(\*\) AS count FROM events WHERE owner_id = \?/, ([ownerId]) =>
+      [[{ count: tables.events.filter((e) => e.owner_id === ownerId).length }]]],
     [/^UPDATE events SET is_active = 0, completed_at = ends_at WHERE is_active = 1 AND ends_at IS NOT NULL AND ends_at <= \?/, ([now]) => {
       let affectedRows = 0;
       tables.events.forEach((event) => {

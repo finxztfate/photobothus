@@ -15,6 +15,7 @@ function AdminSettings() {
   const [system, setSystem] = useState({
     maxGuestUploads: 3,
     maxEventUploads: 500,
+    eventCreationEnabled: true,
     imageAccessTtlHours: 24,
   });
   const [password, setPassword] = useState({
@@ -34,6 +35,7 @@ function AdminSettings() {
           setSystem({
             maxGuestUploads: data.settings.maxGuestUploads,
             maxEventUploads: data.settings.maxEventUploads,
+            eventCreationEnabled: data.settings.eventCreationEnabled !== false,
             imageAccessTtlHours: data.settings.imageAccessTtlHours,
           });
         }
@@ -55,12 +57,14 @@ function AdminSettings() {
         body: {
           maxGuestUploads: Number(system.maxGuestUploads),
           maxEventUploads: Number(system.maxEventUploads),
+          eventCreationEnabled: !!system.eventCreationEnabled,
           imageAccessTtlHours: Number(system.imageAccessTtlHours),
         },
       });
       setSystem({
         maxGuestUploads: data.settings.maxGuestUploads,
         maxEventUploads: data.settings.maxEventUploads,
+        eventCreationEnabled: data.settings.eventCreationEnabled !== false,
         imageAccessTtlHours: data.settings.imageAccessTtlHours,
       });
       setSystemMsg('Settings saved.');
@@ -141,6 +145,19 @@ function AdminSettings() {
                 required
               />
             </label>
+            <label className="dash-checkbox">
+              <input
+                type="checkbox"
+                checked={!!system.eventCreationEnabled}
+                onChange={(e) =>
+                  setSystem((s) => ({ ...s, eventCreationEnabled: e.target.checked }))
+                }
+              />
+              <span>Allow event creation</span>
+            </label>
+            <p className="dash-muted">
+              Turn this off to stop new events. Existing events keep working.
+            </p>
             <label>
               Event photo limit (all guests together)
               <input

@@ -847,6 +847,19 @@
   color: var(--admin-ink);
 }
 
+.dash-form label.dash-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-form label.dash-checkbox input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  accent-color: var(--admin-brown);
+}
+
 .dash-form input,
 .dash-form select {
   border: 1px solid var(--admin-line);

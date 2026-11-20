@@ -6,6 +6,7 @@ const { generateEventCode, readStoredPhoto, extensionForMime } = require('../uti
 const { mapStripRows, deleteStripById, deleteEventAndFiles } = require('../utils/stripHelpers');
 const { closeExpiredEventsQuietly, readInstant, toDateOnly } = require('../utils/eventSchedule');
 const { readPage, pageOf } = require('../utils/pagination');
+const { isEventCreationEnabled } = require('../utils/settings');
 
 const router = express.Router();
 
@@ -143,7 +144,11 @@ router.get('/', async (req, res) => {
        ORDER BY e.created_at DESC`,
       [req.user.id]
     );
-    res.json({ events: rows.map(mapEvent) });
+    const canCreate = await isEventCreationEnabled();
+    res.json({
+      events: rows.map(mapEvent),
+      canCreate,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to list events' });
@@ -156,6 +161,10 @@ router.post('/', async (req, res) => {
     requireEventDetails(fields);
     if (fields.endsAt && fields.endsAt <= new Date()) {
       return res.status(400).json({ error: 'That end time has already passed. Choose a later time.' });
+    }
+
+    if (!(await isEventCreationEnabled())) {
+      return res.status(403).json({ error: 'Event creation is turned off.' });
     }
 
     let code = generateEventCode();

@@ -3,6 +3,7 @@ const { pool } = require('../db');
 const DEFAULTS = {
   max_guest_uploads: '3',
   max_event_uploads: '500',
+  event_creation_enabled: '1',
   image_access_ttl_hours: '24',
 };
 
@@ -71,6 +72,18 @@ async function getMaxEventUploads() {
   return Math.min(MAX_EVENT_UPLOADS_CEILING, Math.floor(n));
 }
 
+function settingIsOn(raw, fallback = true) {
+  if (raw == null || raw === '') return fallback;
+  const value = String(raw).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(value)) return true;
+  if (['0', 'false', 'no', 'off'].includes(value)) return false;
+  return fallback;
+}
+
+async function isEventCreationEnabled() {
+  return settingIsOn(await getSetting('event_creation_enabled'), true);
+}
+
 async function getImageAccessTtlHours() {
   const raw = await getSetting('image_access_ttl_hours');
   const n = Number(raw);
@@ -101,6 +114,7 @@ module.exports = {
   getMaxGuestUploads,
   getMaxEventUploads,
   MAX_EVENT_UPLOADS_CEILING,
+  isEventCreationEnabled,
   getImageAccessTtlHours,
   setSettings,
   invalidateSettingsCache,

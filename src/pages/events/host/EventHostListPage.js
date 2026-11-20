@@ -10,6 +10,7 @@ function EventHostListPage() {
   const { isAuthenticated, isCustomer, loading, user } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
+  const [canCreate, setCanCreate] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -18,7 +19,10 @@ function EventHostListPage() {
     (async () => {
       try {
         const data = await apiRequest('/api/events');
-        if (!cancelled) setEvents(data.events || []);
+        if (!cancelled) {
+          setEvents(data.events || []);
+          setCanCreate(data.canCreate !== false);
+        }
       } catch (err) {
         if (!cancelled) setError(err.message);
       }
@@ -59,6 +63,7 @@ function EventHostListPage() {
             <p>
               Welcome{user?.displayName ? `, ${user.displayName}` : ''}.
               Run a live booth, then open completed events when guest photos unlock.
+              {!canCreate ? ' Event creation is currently off.' : ''}
             </p>
           </div>
         </header>
@@ -87,8 +92,12 @@ function EventHostListPage() {
         {events.length === 0 ? (
           <div className="hub-empty">
             <h2>No events yet</h2>
-            <p>Create your first event to get a QR code and start collecting guest photos.</p>
-            <Link to="/events/new" className="hub-primary-btn">Create New Event</Link>
+            <p>
+              {canCreate
+                ? 'Create your first event to get a QR code and start collecting guest photos.'
+                : 'Event creation is currently off.'}
+            </p>
+            {canCreate ? <Link to="/events/new" className="hub-primary-btn">Create New Event</Link> : null}
           </div>
         ) : (
           <div className="hub-sections">
@@ -98,7 +107,11 @@ function EventHostListPage() {
                 <span>{activeEvents.length}</span>
               </div>
               {activeEvents.length === 0 ? (
-                <p className="hub-panel-empty">Nothing live right now. Create an event to open the guest booth.</p>
+                <p className="hub-panel-empty">
+                  {canCreate
+                    ? 'Nothing live right now. Create an event to open the guest booth.'
+                    : 'Nothing live right now.'}
+                </p>
               ) : (
                 <div className="hub-event-list">
                   {activeEvents.map((event) => (

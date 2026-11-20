@@ -25,6 +25,7 @@ function settingsPayload(settings) {
   return {
     maxGuestUploads: Number(settings.max_guest_uploads),
     maxEventUploads: Number(settings.max_event_uploads),
+    eventCreationEnabled: settings.event_creation_enabled !== '0' && settings.event_creation_enabled !== 'false',
     imageAccessTtlHours: Number(settings.image_access_ttl_hours),
   };
 }
@@ -588,6 +589,10 @@ router.patch('/settings', async (req, res) => {
         });
       }
       updates.max_event_uploads = String(Math.floor(n));
+    }
+
+    if (req.body.eventCreationEnabled != null) {
+      updates.event_creation_enabled = req.body.eventCreationEnabled ? '1' : '0';
     }
 
     if (req.body.imageAccessTtlHours != null) {

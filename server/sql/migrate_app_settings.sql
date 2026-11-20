@@ -21,3 +21,9 @@ SELECT 'image_access_ttl_hours', '24'
 WHERE NOT EXISTS (
   SELECT 1 FROM app_settings WHERE setting_key = 'image_access_ttl_hours'
 );
+
+INSERT INTO app_settings (setting_key, setting_value)
+SELECT 'event_creation_enabled', '1'
+WHERE NOT EXISTS (
+  SELECT 1 FROM app_settings WHERE setting_key = 'event_creation_enabled'
+);

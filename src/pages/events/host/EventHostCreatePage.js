@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import { buildSchedule } from '../../../utils/eventSchedule';
@@ -24,10 +24,58 @@ function EventHostCreatePage() {
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [quota, setQuota] = useState(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isCustomer) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiRequest('/api/events');
+        if (!cancelled) {
+          setQuota({
+            events: data.events || [],
+            canCreate: data.canCreate !== false,
+          });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Could not load events');
+          setQuota({ events: [], canCreate: true });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isCustomer]);
 
   if (loading) return <div className="auth-page"><p>Loading…</p></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isCustomer) return <Navigate to="/admin" replace />;
+
+  if (quota === null) {
+    return (
+      <EventHostDashLayout>
+        <div className="auth-page"><p>Loading…</p></div>
+      </EventHostDashLayout>
+    );
+  }
+
+  if (!quota.canCreate) {
+    return (
+      <EventHostDashLayout>
+        <div className="auth-page">
+          <div className="auth-card auth-card-wide event-details-card">
+            <p className="auth-kicker">Event dashboard</p>
+            <h1>Event creation is off</h1>
+            <p className="auth-subtitle">
+              New events cannot be created right now. Existing events still work.
+            </p>
+            <Link to="/events" className="hub-primary-btn">Back to events</Link>
+          </div>
+        </div>
+      </EventHostDashLayout>
+    );
+  }
 
   const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const schedule = buildSchedule(form.eventDate, form.startTime, form.endTime);
