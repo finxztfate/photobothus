@@ -73,4 +73,9 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
+
+  .edit-toolbar-cluster {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }

@@ -44,6 +44,65 @@
   flex-wrap: wrap;
 }
 
+.edit-toolbar-cluster {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 0;
+  border: 1px solid rgba(221, 156, 13, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.edit-export-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.edit-export-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.edit-print-spec {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 0;
+  border: 1px dashed rgba(232, 163, 61, 0.42);
+  background:
+    linear-gradient(90deg, rgba(232, 163, 61, 0.12), rgba(232, 163, 61, 0.04));
+}
+
+.edit-print-spec-kicker,
+.edit-print-spec-dpi {
+  font-family: var(--font-subheading);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #E8A33D;
+}
+
+.edit-print-spec-size {
+  font-family: var(--font-heading);
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-align: center;
+}
+
+.edit-print-spec--hero {
+  max-width: 320px;
+  margin: 10px auto 0;
+}
+
 .edit-download,
 .edit-share,
 .edit-close,
@@ -52,7 +111,7 @@
 .custom-frame-upload-btn,
 .custom-frame-apply-btn {
   padding: 9px 18px;
-  border-radius: 50px;
+  border-radius: 0;
   font-family: var(--font-subheading);
   font-size: 0.85rem;
   font-weight: 700;
@@ -228,7 +287,7 @@
 .edit-panel {
   background: linear-gradient(135deg, rgba(232, 202, 160, 0.12) 0%, rgba(162, 125, 72, 0.12) 100%);
   border: 1px solid rgba(221, 156, 13, 0.3);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 12px;
   box-shadow: 0 0 30px 4px rgba(216, 133, 15, 0.12);
   min-width: 0;
@@ -259,7 +318,7 @@
   width: 100%;
   background: rgba(22, 18, 12, 0.55);
   border: 1px solid rgba(221, 156, 13, 0.35);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 10px 12px;
   color: var(--text-heading);
   font-size: 0.85rem;
@@ -462,7 +521,7 @@
 .edit-preview {
   background: linear-gradient(135deg, rgba(232, 202, 160, 0.18) 0%, rgba(162, 125, 72, 0.18) 100%);
   border: 1px solid rgba(221, 156, 13, 0.35);
-  border-radius: 20px;
+  border-radius: 0;
   padding: 24px;
   min-height: 360px;
   display: flex;
@@ -509,35 +568,11 @@
   max-width: 720px;
 }
 
-.story-modal-card {
-  max-width: 520px;
-}
-
 .edit-download-modal-card h2,
 .edit-custom-modal-card h2 {
   font-family: var(--font-heading);
   color: var(--text-heading);
   margin-bottom: 12px;
-}
-
-.edit-story-preview {
-  width: 180px;
-  max-height: 320px;
-  object-fit: contain;
-  border-radius: 14px;
-  border: 1px solid rgba(221, 156, 13, 0.35);
-  box-shadow: 0 8px 28px rgba(216, 133, 15, 0.2);
-  margin: 16px auto 18px;
-  display: block;
-}
-
-.story-steps {
-  margin: 18px 0 0;
-  padding-left: 22px;
-  text-align: left;
-  color: var(--text-body);
-  font-size: 0.9rem;
-  line-height: 1.6;
 }
 
 .edit-modal-close {
@@ -836,7 +871,7 @@
   justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
@@ -990,7 +1025,7 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 2px;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(221, 156, 13, 0.2);
 }
@@ -998,7 +1033,7 @@
 .date-segmented button {
   padding: 7px 0;
   border: none;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-body);
   font-family: var(--font-subheading);
@@ -1075,7 +1110,7 @@
   gap: 3px;
   min-width: 0;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid rgba(221, 156, 13, 0.2);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-heading);
@@ -1223,7 +1258,7 @@
   align-items: center;
   justify-content: center;
   padding: 28px;
-  border-radius: 24px;
+  border-radius: 0;
   border: 1px solid rgba(221, 156, 13, 0.18);
   background:
     radial-gradient(ellipse at 50% 40%, rgba(232, 163, 61, 0.16), transparent 65%),
@@ -1320,7 +1355,7 @@
 .edit-page--studio .edit-sidebar {
   gap: 0;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 0;
   border: 1px solid rgba(221, 156, 13, 0.25);
   background: linear-gradient(180deg, rgba(232, 202, 160, 0.08), rgba(162, 125, 72, 0.05));
 }
@@ -1361,7 +1396,7 @@
 
 .edit-page--studio .edit-panel {
   padding: 14px;
-  border-radius: 14px;
+  border-radius: 0;
   border: 1px solid rgba(221, 156, 13, 0.18);
   background: rgba(22, 18, 12, 0.35);
   box-shadow: none;
@@ -1389,7 +1424,7 @@
 .edit-outline-btn {
   flex-shrink: 0;
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid rgba(221, 156, 13, 0.5);
   background: transparent;
   color: var(--text-heading);
@@ -1413,6 +1448,16 @@
   padding: 14px 16px 16px;
   border-top: 1px solid rgba(221, 156, 13, 0.18);
   background: rgba(22, 18, 12, 0.4);
+}
+
+.edit-actions-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.edit-actions-split.is-single {
+  grid-template-columns: 1fr;
 }
 
 .edit-action-primary,
@@ -1460,6 +1505,16 @@
   background: rgba(255, 255, 255, 0.4);
 }
 
+[data-theme="light"] .edit-print-spec {
+  background: linear-gradient(90deg, rgba(232, 163, 61, 0.16), rgba(255, 255, 255, 0.4));
+  border-color: rgba(130, 76, 0, 0.28);
+}
+
+[data-theme="light"] .edit-toolbar-cluster {
+  background: rgba(255, 255, 255, 0.45);
+  border-color: var(--layouts-frame-border);
+}
+
 [data-theme="light"] .edit-stage-canvas {
   border-color: var(--layouts-frame-border);
   background:
@@ -1489,13 +1544,13 @@
 
   .edit-stage-canvas {
     padding: 14px;
-    border-radius: 18px;
+    border-radius: 0;
   }
 
   .edit-page--studio .edit-sidebar {
     flex: 1 1 auto;
     min-height: 0;
-    border-radius: 18px 18px 0 0;
+    border-radius: 0;
     border-bottom: none;
   }
 
@@ -1505,17 +1560,22 @@
   }
 
   .edit-actions {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
     padding: 10px 12px 12px;
   }
 
-  .edit-action-primary {
-    flex: 1 1 55%;
+  .edit-action-primary,
+  .edit-action-secondary {
+    flex: none;
   }
 
-  .edit-action-secondary {
-    flex: 1 1 35%;
+  .edit-print-spec {
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+  }
+
+  .edit-print-spec-kicker {
+    grid-column: 1 / -1;
   }
 
   .edit-actions-note {

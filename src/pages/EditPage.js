@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { resolveLayoutId, getLayoutById } from '../data/stripLayouts';
+import { resolveLayoutId, getLayoutById, getStripPrintSize } from '../data/stripLayouts';
 import { bgColorPresets, buildCustomGradient, getBackgroundPreviewStyle, isCssOnlyBackground } from '../data/editorBackgrounds';
-import { renderStripToCanvas, drawImageCover, getDefaultDatePosition, isLightBackground } from '../utils/stripCompositor';
+import { renderStripToCanvas, getDefaultDatePosition, isLightBackground, sheetForPrint, printPhotoboothStrip } from '../utils/stripCompositor';
 import { customization } from '../utils/customization';
 import { uploadStrip } from '../utils/api';
 import { trackDataAction } from '../utils/loadingBus';
@@ -10,6 +10,12 @@ import { useAuth } from '../utils/auth';
 import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
+import {
+  IconDownload,
+  IconGallery,
+  IconPrint,
+  StripPrintSpec,
+} from '../components/StripExportIcons';
 import './Home.css';
 import './EditPage.css';
 
@@ -20,9 +26,6 @@ function loadEditorState() {
     return null;
   }
 }
-
-const STORY_WIDTH = 1080;
-const STORY_HEIGHT = 1920;
 
 function downloadDataUrl(dataUrl, filename) {
   const link = document.createElement('a');
@@ -98,11 +101,9 @@ function EditPage() {
   const [customFramePreview, setCustomFramePreview] = useState(null);
   const [previewStrip, setPreviewStrip] = useState(null);
   const [isPreviewGenerating, setIsPreviewGenerating] = useState(false);
-  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
-  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
-  const [storyDataUrl, setStoryDataUrl] = useState(null);
   const [error, setError] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const savedTimerRef = useRef(null);
@@ -298,7 +299,8 @@ function EditPage() {
     try {
       const dataUrl = await generateStrip({ forExport: true });
       if (!dataUrl) return;
-      downloadDataUrl(dataUrl, `photobooth-strip-${Date.now()}.png`);
+      const printUrl = await sheetForPrint(layout, dataUrl);
+      downloadDataUrl(printUrl, `photobooth-strip-${Date.now()}.png`);
       setHasDownloaded(true);
       setJustSaved(true);
       window.clearTimeout(savedTimerRef.current);
@@ -306,6 +308,22 @@ function EditPage() {
     } finally {
       setIsExporting(false);
     }
+    });
+  };
+
+  const handlePrint = async () => {
+    await trackDataAction(async () => {
+      setIsPrinting(true);
+      try {
+        const dataUrl = await generateStrip({ forExport: true });
+        if (!dataUrl) return;
+        printPhotoboothStrip(dataUrl, layout);
+        setHasDownloaded(true);
+      } catch (err) {
+        setError(err.message || 'Could not print this strip');
+      } finally {
+        setIsPrinting(false);
+      }
     });
   };
 
@@ -334,130 +352,6 @@ function EditPage() {
 
   useEffect(() => () => window.clearTimeout(galleryTimerRef.current), []);
 
-  const firstCapturedPhotoSrc = capturedPhotos[0]?.src;
-
-  const generateStory = useCallback(async () => {
-    if (isGenerating || isGeneratingStory || capturedPhotos.length === 0) {
-      if (capturedPhotos.length === 0) setError('No photos captured yet.');
-      return null;
-    }
-
-    setIsGeneratingStory(true);
-    setError('');
-
-    try {
-      const stripDataUrl = await generateStrip({ forExport: true });
-      if (!stripDataUrl) return null;
-
-      const loadImage = (src) =>
-        new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-          img.src = src;
-        });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = STORY_WIDTH;
-      canvas.height = STORY_HEIGHT;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not supported');
-
-      const stripImage = await loadImage(stripDataUrl);
-      if (!stripImage) throw new Error('Story image could not be generated');
-
-      const drawRoundedRect = (x, y, width, height, radius) => {
-        const r = Math.min(radius, width / 2, height / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + width - r, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-        ctx.lineTo(x + width, y + height - r);
-        ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-        ctx.lineTo(x + r, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-      };
-
-      const backgroundPhoto = await loadImage(firstCapturedPhotoSrc || stripDataUrl);
-      if (!backgroundPhoto) throw new Error('Story background photo could not be generated');
-
-      ctx.save();
-      ctx.filter = 'blur(22px) brightness(0.92)';
-      drawImageCover(ctx, backgroundPhoto, 0, 0, STORY_WIDTH, STORY_HEIGHT, 1);
-      ctx.restore();
-
-      const margin = 108;
-      const maxPhotoWidth = STORY_WIDTH - margin * 2;
-      const maxPhotoHeight = 1040;
-      const scale = Math.min(maxPhotoWidth / stripImage.width, maxPhotoHeight / stripImage.height);
-      const photoWidth = Math.floor(stripImage.width * scale);
-      const photoHeight = Math.floor(stripImage.height * scale);
-      const photoX = (STORY_WIDTH - photoWidth) / 2;
-      const photoY = 360;
-
-      ctx.save();
-      ctx.shadowColor = 'rgba(124, 77, 255, 0.22)';
-      ctx.shadowBlur = 34;
-      ctx.shadowOffsetY = 18;
-      ctx.fillStyle = '#ffffff';
-      drawRoundedRect(photoX, photoY, photoWidth, photoHeight, 28);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.drawImage(stripImage, photoX, photoY, photoWidth, photoHeight);
-
-      ctx.save();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 6;
-      drawRoundedRect(photoX, photoY, photoWidth, photoHeight, 28);
-      ctx.stroke();
-      ctx.restore();
-
-      return canvas.toDataURL('image/png');
-    } catch (err) {
-      setError(err.message || 'Failed to generate story image');
-      return null;
-    } finally {
-      setIsGeneratingStory(false);
-    }
-  }, [capturedPhotos.length, firstCapturedPhotoSrc, generateStrip, isGenerating, isGeneratingStory]);
-
-  const handleShare = async () => {
-    await trackDataAction(async () => {
-    const storyUrl = await generateStory();
-    if (!storyUrl) return;
-
-    setStoryDataUrl(storyUrl);
-    setIsStoryModalOpen(true);
-    });
-  };
-
-  const handleShareDownload = async () => {
-    if (!storyDataUrl) return;
-
-    const filename = `photobothus-story-${Date.now()}.png`;
-    await trackDataAction(async () => {
-    try {
-      const file = await dataUrlToFile(storyDataUrl, filename);
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Photobothus Story',
-          text: 'Here is my Photobothus story image.',
-        });
-        return;
-      }
-    } catch (err) {
-      if (err?.name === 'AbortError') return;
-    }
-
-    downloadDataUrl(storyDataUrl, filename);
-    });
-  };
-
   const confirmLeave = (message) => (
     hasDownloaded || capturedPhotos.length === 0 || window.confirm(message)
   );
@@ -476,15 +370,14 @@ function EditPage() {
   };
 
   useEffect(() => {
-    if (!isStoryModalOpen && !isCustomModalOpen) return undefined;
+    if (!isCustomModalOpen) return undefined;
     const onKeyDown = (event) => {
       if (event.key !== 'Escape') return;
-      setIsStoryModalOpen(false);
       setIsCustomModalOpen(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isStoryModalOpen, isCustomModalOpen]);
+  }, [isCustomModalOpen]);
 
   const handleCustomFrameUpload = (e) => {
     const file = e.target.files[0];
@@ -544,7 +437,8 @@ function EditPage() {
     if (typeof customBg === 'string' && customBg.startsWith('data:image')) return 'Your frame';
     return bgColorPresets.find((preset) => preset.value === customBg)?.name || 'Custom color';
   })();
-  const isBusy = isGenerating || isExporting || isGeneratingStory || isSavingToGallery;
+  const isBusy = isGenerating || isExporting || isPrinting || isSavingToGallery;
+  const printSize = getStripPrintSize(layout);
 
   const displayBackground = backgroundPreview ?? customBg;
   const frameBackgroundStyle = isCssOnlyBackground(displayBackground)
@@ -562,31 +456,6 @@ function EditPage() {
           Close <span aria-hidden="true">✕</span>
         </button>
       </header>
-
-      {isStoryModalOpen && (
-        <div
-          className="edit-download-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="story-modal-title"
-          onClick={() => setIsStoryModalOpen(false)}
-        >
-          <div className="edit-download-modal-card story-modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2 id="story-modal-title">Create Instagram Story</h2>
-            {storyDataUrl && <img src={storyDataUrl} alt="Photobothus Instagram Story template" className="edit-story-preview" />}
-            <p className="custom-modal-intro">Instagram does not allow web apps to upload directly to Stories. Save this image, open Instagram, create a Story, and upload it.</p>
-            <ol className="story-steps">
-              <li>Save the generated story image.</li>
-              <li>Open Instagram and create a new Story.</li>
-              <li>Upload the saved image and tap Share.</li>
-            </ol>
-            <div className="custom-modal-actions">
-              <button className="edit-download" onClick={handleShareDownload}>Download Story</button>
-              <button className="edit-modal-close" onClick={() => setIsStoryModalOpen(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isCustomModalOpen && (
         <div
@@ -759,36 +628,42 @@ function EditPage() {
           </div>
 
           <div className="edit-actions">
+            <StripPrintSpec size={printSize} />
             <button
               type="button"
-              className={`edit-download edit-action-primary${justSaved ? ' is-saved' : ''}`}
+              className={`edit-download edit-action-primary edit-export-btn${justSaved ? ' is-saved' : ''}`}
               onClick={handleDownload}
               disabled={isBusy || capturedPhotos.length === 0}
             >
-              {justSaved ? '✓ Saved to your device' : isExporting ? 'Preparing…' : 'Download strip'}
+              <IconDownload />
+              {justSaved ? 'Saved to your device' : isExporting ? 'Preparing…' : 'Download strip'}
             </button>
-            {isCustomer && (
+            <div className={`edit-actions-split${isCustomer ? '' : ' is-single'}`}>
               <button
                 type="button"
-                className="edit-share edit-action-secondary"
-                onClick={handleSaveToGallery}
+                className="edit-share edit-action-secondary edit-export-btn"
+                onClick={handlePrint}
                 disabled={isBusy || capturedPhotos.length === 0}
               >
-                {justSavedToGallery
-                  ? '✓ Saved to My Gallery'
-                  : isSavingToGallery
-                    ? 'Saving…'
-                    : 'Save to My Gallery'}
+                <IconPrint />
+                {isPrinting ? 'Preparing…' : 'Print'}
               </button>
-            )}
-            <button
-              type="button"
-              className="edit-share edit-action-secondary"
-              onClick={handleShare}
-              disabled={isBusy || capturedPhotos.length === 0}
-            >
-              {isGeneratingStory ? 'Creating story…' : 'Share as IG Story'}
-            </button>
+              {isCustomer && (
+                <button
+                  type="button"
+                  className="edit-share edit-action-secondary edit-export-btn"
+                  onClick={handleSaveToGallery}
+                  disabled={isBusy || capturedPhotos.length === 0}
+                >
+                  <IconGallery />
+                  {justSavedToGallery
+                    ? 'Saved to gallery'
+                    : isSavingToGallery
+                      ? 'Saving…'
+                      : 'Save to gallery'}
+                </button>
+              )}
+            </div>
             <p className="edit-actions-note">
               {isCustomer
                 ? 'Your photos stay on this device unless you save them to your gallery.'

@@ -15,7 +15,7 @@ import RetroFrameOverlay from '../components/RetroFrameOverlay';
 
 const COLOR_FILTERS = filterPresets.filter((preset) => !preset.frame);
 
-const TIMER_OPTIONS = [3, 5, 10];
+const TIMER_OPTIONS = [0, 3, 5, 10];
 
 function delay(ms) {
   return new Promise((resolve) => {
@@ -76,6 +76,10 @@ function Photobooth({ theme, toggleTheme }) {
   }, [layout, frameFilters]);
 
   const runCountdown = useCallback(async (seconds) => {
+    if (seconds <= 0) {
+      setCountdown(null);
+      return;
+    }
     let remaining = seconds;
     while (remaining > 0) {
       setCountdown(remaining);
@@ -94,7 +98,10 @@ function Photobooth({ theme, toggleTheme }) {
     const videoEl = webcamRef.current?.getVideoElement?.();
     if (!videoEl?.videoWidth || !videoEl?.videoHeight) return false;
 
-    const imageSrc = await webcamRef.current?.captureBooth({ settleMs: 100 });
+    const imageSrc = await webcamRef.current?.captureBooth({
+      settleMs: 100,
+      mirrored: false,
+    });
     if (!imageSrc) return false;
 
     setCapturedPhotos((prev) => [
@@ -148,6 +155,22 @@ function Photobooth({ theme, toggleTheme }) {
     triggerCaptureFx,
     capturePhoto,
   ]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.code !== 'Space' && event.key !== ' ') return;
+      if (event.repeat) return;
+      if (showFilterModal || isSessionRunning || isComplete) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest('button, a, input, textarea, select, [contenteditable="true"]')) {
+        return;
+      }
+      event.preventDefault();
+      handleStartSession();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleStartSession, showFilterModal, isSessionRunning, isComplete]);
 
   const handleDone = () => {
     if (!isComplete) return;
@@ -217,6 +240,7 @@ function Photobooth({ theme, toggleTheme }) {
       : capturedPhotos.length > 0
         ? 'Take next photo'
         : 'Start';
+  const showSpaceHint = !isSessionRunning && !isComplete;
 
   return (
     <div className="photobooth-page">
@@ -264,7 +288,7 @@ function Photobooth({ theme, toggleTheme }) {
               disabled={isSessionRunning}
             >
               {TIMER_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}s</option>
+                <option key={s} value={s}>{s <= 0 ? 'Instant' : `${s}s`}</option>
               ))}
             </select>
           </label>
@@ -326,6 +350,7 @@ function Photobooth({ theme, toggleTheme }) {
               onSwitchCamera={availableCameras.length > 1 ? switchCamera : null}
               frameId={activeFrame}
               frameIndex={Math.min(capturedPhotos.length, slotCount - 1)}
+              sharp
             />
           </div>
 
@@ -367,8 +392,13 @@ function Photobooth({ theme, toggleTheme }) {
               className="booth-start-btn"
               onClick={handleStartSession}
               disabled={isSessionRunning}
+              aria-keyshortcuts={showSpaceHint ? 'Space' : undefined}
+              aria-label={showSpaceHint ? `${startLabel}, or press Space` : startLabel}
             >
               {startLabel}
+              {showSpaceHint && (
+                <kbd className="booth-start-kbd">Space</kbd>
+              )}
             </button>
             {isComplete && (
               <button type="button" className="booth-done-btn" onClick={handleDone}>

@@ -152,6 +152,24 @@ function EventPhotobooth() {
     }, 1000);
   }, [countdown, takeShot, timerSeconds]);
 
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.code !== 'Space' && event.key !== ' ') return;
+      if (event.repeat) return;
+      if (scene !== 'capture' || isCapturing || countdown != null || capturedPhotos.length >= slotCount) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof Element && target.closest('button, a, input, textarea, select, [contenteditable="true"]')) {
+        return;
+      }
+      event.preventDefault();
+      startCountdown();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [scene, isCapturing, countdown, capturedPhotos.length, slotCount, startCountdown]);
+
   const switchCamera = () => {
     if (availableCameras.length < 2) return;
     const currentIndex = availableCameras.findIndex((c) => c.id === selectedCamera);

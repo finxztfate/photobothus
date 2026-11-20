@@ -226,9 +226,9 @@
   max-height: 70vh;
   margin: 0;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 0;
   background: #000;
-  border: 2px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border-card);
 }
 
 .booth-capture-fx {
@@ -292,8 +292,9 @@
   width: 150px;
   max-width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
+  border: 1px solid var(--border-card);
   animation: vintagePrint 0.7s ease-out both;
 }
 
@@ -425,7 +426,10 @@
 }
 
 .booth-start-btn {
-  padding: 9px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px 9px 22px;
   background: var(--btn-gradient);
   border: 1px solid var(--btn-border);
   border-radius: 50px;
@@ -437,6 +441,20 @@
   cursor: pointer;
   box-shadow: 0 0 24px rgba(216, 133, 15, 0.35);
   transition: transform 0.15s, box-shadow 0.2s;
+}
+
+.booth-start-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid rgba(240, 239, 239, 0.42);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  font-family: var(--font-subheading);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .booth-start-btn:hover:not(:disabled) {
@@ -1451,7 +1469,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px;
+  padding: 5px;
   width: 220px;
   border-radius: 10px;
   overflow: hidden;

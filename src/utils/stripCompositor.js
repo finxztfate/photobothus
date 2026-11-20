@@ -3,7 +3,13 @@ import {
   getDarkPlacements,
   getPhotoPlacements,
 } from '../data/filterTemplates';
-import { STRIP_PADDING } from '../data/stripLayouts';
+import {
+  STRIP_CUT_GAP,
+  STRIP_PADDING,
+  getStripPrintSize,
+  shouldPrintTwinStrips,
+  stripPlacementOptions,
+} from '../data/stripLayouts';
 import { drawRetroFrame, ensureRetroFrameFonts } from './retroFrames';
 
 function loadImage(src) {
@@ -154,13 +160,7 @@ export function getDateStampText(date = new Date()) {
 /** Default normalized center (0–1) for the date stamp from a legacy placement preset. */
 export function getDefaultDatePosition(layoutId, { placement = 'belowPhotos', dateSize = 12 } = {}) {
   const { padding, stripWidth, stripHeight } = computeStripDimensions(layoutId);
-  const placementOptions = {
-    paddingTop: padding.top,
-    paddingRight: padding.side,
-    paddingBottom: padding.bottom,
-    paddingLeft: padding.side,
-    gap: 2,
-  };
+  const placementOptions = stripPlacementOptions(padding);
 
   const darkRects = getDarkPlacements(layoutId, stripWidth, stripHeight, placementOptions);
   const placements = getPhotoPlacements(layoutId, stripWidth, stripHeight, placementOptions);
@@ -203,13 +203,7 @@ function resolveDateCoordinates({
   }
 
   const { padding } = computeStripDimensions(layoutId);
-  const placementOptions = {
-    paddingTop: padding.top,
-    paddingRight: padding.side,
-    paddingBottom: padding.bottom,
-    paddingLeft: padding.side,
-    gap: 2,
-  };
+  const placementOptions = stripPlacementOptions(padding);
   const darkRects = getDarkPlacements(layoutId, stripWidth, stripHeight, placementOptions);
   const placements = getPhotoPlacements(layoutId, stripWidth, stripHeight, placementOptions);
   const bottomDark = getBottomDarkRect(darkRects);
@@ -264,13 +258,7 @@ export async function renderStripToCanvas({
     await fillBackground(ctx, customBg, stripWidth, stripHeight);
   }
 
-  const placementOptions = {
-    paddingTop: padding.top,
-    paddingRight: padding.side,
-    paddingBottom: padding.bottom,
-    paddingLeft: padding.side,
-    gap: 2,
-  };
+  const placementOptions = stripPlacementOptions(padding);
 
   const loaded = await Promise.all(
     photos.map(async (photo) => ({ photo, img: await loadImage(photo.src) }))
@@ -327,4 +315,80 @@ export async function renderStripToCanvas({
   }
 
   return canvas.toDataURL('image/png');
+}
+
+/** Two identical strips on one sheet with a cut gutter between them. */
+export async function composeTwinStripSheet(stripDataUrl, { gap = STRIP_CUT_GAP } = {}) {
+  const img = await loadImage(stripDataUrl);
+  if (!img?.width) return stripDataUrl;
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width * 2 + gap;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return stripDataUrl;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, img.width + gap, 0);
+  return canvas.toDataURL('image/png');
+}
+
+export async function sheetForPrint(layoutId, stripDataUrl) {
+  if (!stripDataUrl || !shouldPrintTwinStrips(layoutId)) return stripDataUrl;
+  return composeTwinStripSheet(stripDataUrl);
+}
+
+/** Open the browser print dialog at the strip's real 300 DPI size (e.g. 2×6 in). */
+export function printPhotoboothStrip(stripDataUrl, layoutId) {
+  if (!stripDataUrl) return;
+
+  const { widthIn, heightIn } = getStripPrintSize(layoutId);
+  const iframe = document.createElement('iframe');
+  iframe.title = 'Print photo strip';
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  document.body.appendChild(iframe);
+
+  const cleanup = () => {
+    window.setTimeout(() => iframe.remove(), 500);
+  };
+
+  const doc = iframe.contentDocument;
+  const win = iframe.contentWindow;
+  if (!doc || !win) {
+    cleanup();
+    return;
+  }
+
+  doc.open();
+  doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Photo strip</title>
+  <style>
+    @page { size: ${widthIn}in ${heightIn}in; margin: 0; }
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+    img {
+      display: block;
+      width: ${widthIn}in;
+      height: ${heightIn}in;
+      max-width: none;
+    }
+  </style>
+</head>
+<body></body>
+</html>`);
+  doc.close();
+
+  const img = doc.createElement('img');
+  img.alt = 'Photobooth strip';
+  img.onload = () => {
+    win.addEventListener('afterprint', cleanup, { once: true });
+    win.focus();
+    win.print();
+  };
+  img.onerror = cleanup;
+  img.src = stripDataUrl;
+  doc.body.appendChild(img);
 }

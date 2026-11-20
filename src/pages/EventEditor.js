@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { resolveLayoutId, getLayoutById } from '../data/stripLayouts';
+import { resolveLayoutId, getLayoutById, getStripPrintSize } from '../data/stripLayouts';
 import { bgColorPresets, buildCustomGradient, getBackgroundPreviewStyle, isCssOnlyBackground } from '../data/editorBackgrounds';
-import { renderStripToCanvas, drawImageCover, getDefaultDatePosition, isLightBackground } from '../utils/stripCompositor';
+import { renderStripToCanvas, getDefaultDatePosition, isLightBackground, sheetForPrint, printPhotoboothStrip } from '../utils/stripCompositor';
 import { customization } from '../utils/customization';
 import { uploadStrip, getEventGuestKey, apiRequest } from '../utils/api';
 import { trackDataAction } from '../utils/loadingBus';
@@ -11,6 +11,13 @@ import { DEFAULT_MAX_GUEST_UPLOADS } from '../data/eventLimits';
 import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
+import {
+  IconDownload,
+  IconPrint,
+  IconShare,
+  IconUpload,
+  StripPrintSpec,
+} from '../components/StripExportIcons';
 import './Home.css';
 import './EventEditor.css';
 
@@ -21,9 +28,6 @@ function loadEditorState() {
     return null;
   }
 }
-
-const STORY_WIDTH = 1080;
-const STORY_HEIGHT = 1920;
 
 function downloadDataUrl(dataUrl, filename) {
   const link = document.createElement('a');
@@ -116,9 +120,6 @@ function EventEditor() {
   const [customFramePreview, setCustomFramePreview] = useState(null);
   const [previewStrip, setPreviewStrip] = useState(null);
   const [isPreviewGenerating, setIsPreviewGenerating] = useState(false);
-  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
-  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
-  const [storyDataUrl, setStoryDataUrl] = useState(null);
   const [error, setError] = useState('');
   const stripGenerationRef = useRef(0);
   const skipInitialRegenRef = useRef(
@@ -128,6 +129,7 @@ function EventEditor() {
   );
   const [saveMessage, setSaveMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [uploadsRemaining, setUploadsRemaining] = useState(null);
@@ -452,7 +454,23 @@ function EventEditor() {
     await trackDataAction(async () => {
     const dataUrl = await generateStrip({ forExport: true });
     if (!dataUrl) return;
-    downloadDataUrl(dataUrl, `photobooth-strip-${Date.now()}.png`);
+    const printUrl = await sheetForPrint(layout, dataUrl);
+    downloadDataUrl(printUrl, `photobooth-strip-${Date.now()}.png`);
+    });
+  };
+
+  const handlePrint = async () => {
+    await trackDataAction(async () => {
+      setIsPrinting(true);
+      try {
+        const dataUrl = await generateStrip({ forExport: true });
+        if (!dataUrl) return;
+        printPhotoboothStrip(dataUrl, layout);
+      } catch (err) {
+        setError(err.message || 'Could not print this strip');
+      } finally {
+        setIsPrinting(false);
+      }
     });
   };
 
@@ -460,9 +478,10 @@ function EventEditor() {
     await trackDataAction(async () => {
       const dataUrl = await generateStrip({ forExport: true });
       if (!dataUrl) return;
+      const printUrl = await sheetForPrint(layout, dataUrl);
       const filename = `photobooth-strip-${Date.now()}.png`;
       try {
-        const file = await dataUrlToFile(dataUrl, filename);
+        const file = await dataUrlToFile(printUrl, filename);
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
           await navigator.share({
             files: [file],
@@ -474,7 +493,7 @@ function EventEditor() {
       } catch (err) {
         if (err?.name === 'AbortError') return;
       }
-      downloadDataUrl(dataUrl, filename);
+      downloadDataUrl(printUrl, filename);
     });
   };
 
@@ -527,130 +546,6 @@ function EventEditor() {
     } finally {
       setIsSaving(false);
     }
-    });
-  };
-
-  const firstCapturedPhotoSrc = capturedPhotos[0]?.src;
-
-  const generateStory = useCallback(async () => {
-    if (isGenerating || isGeneratingStory || capturedPhotos.length === 0) {
-      if (capturedPhotos.length === 0) setError('No photos captured yet.');
-      return null;
-    }
-
-    setIsGeneratingStory(true);
-    setError('');
-
-    try {
-      const stripDataUrl = await generateStrip({ forExport: true });
-      if (!stripDataUrl) return null;
-
-      const loadImage = (src) =>
-        new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-          img.src = src;
-        });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = STORY_WIDTH;
-      canvas.height = STORY_HEIGHT;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not supported');
-
-      const stripImage = await loadImage(stripDataUrl);
-      if (!stripImage) throw new Error('Story image could not be generated');
-
-      const drawRoundedRect = (x, y, width, height, radius) => {
-        const r = Math.min(radius, width / 2, height / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + width - r, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-        ctx.lineTo(x + width, y + height - r);
-        ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-        ctx.lineTo(x + r, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-      };
-
-      const backgroundPhoto = await loadImage(firstCapturedPhotoSrc || stripDataUrl);
-      if (!backgroundPhoto) throw new Error('Story background photo could not be generated');
-
-      ctx.save();
-      ctx.filter = 'blur(22px) brightness(0.92)';
-      drawImageCover(ctx, backgroundPhoto, 0, 0, STORY_WIDTH, STORY_HEIGHT, 1);
-      ctx.restore();
-
-      const margin = 108;
-      const maxPhotoWidth = STORY_WIDTH - margin * 2;
-      const maxPhotoHeight = 1040;
-      const scale = Math.min(maxPhotoWidth / stripImage.width, maxPhotoHeight / stripImage.height);
-      const photoWidth = Math.floor(stripImage.width * scale);
-      const photoHeight = Math.floor(stripImage.height * scale);
-      const photoX = (STORY_WIDTH - photoWidth) / 2;
-      const photoY = 360;
-
-      ctx.save();
-      ctx.shadowColor = 'rgba(124, 77, 255, 0.22)';
-      ctx.shadowBlur = 34;
-      ctx.shadowOffsetY = 18;
-      ctx.fillStyle = '#ffffff';
-      drawRoundedRect(photoX, photoY, photoWidth, photoHeight, 28);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.drawImage(stripImage, photoX, photoY, photoWidth, photoHeight);
-
-      ctx.save();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 6;
-      drawRoundedRect(photoX, photoY, photoWidth, photoHeight, 28);
-      ctx.stroke();
-      ctx.restore();
-
-      return canvas.toDataURL('image/png');
-    } catch (err) {
-      setError(err.message || 'Failed to generate story image');
-      return null;
-    } finally {
-      setIsGeneratingStory(false);
-    }
-  }, [capturedPhotos.length, firstCapturedPhotoSrc, generateStrip, isGenerating, isGeneratingStory]);
-
-  const handleShare = async () => {
-    await trackDataAction(async () => {
-    const storyUrl = await generateStory();
-    if (!storyUrl) return;
-
-    setStoryDataUrl(storyUrl);
-    setIsStoryModalOpen(true);
-    });
-  };
-
-  const handleShareDownload = async () => {
-    if (!storyDataUrl) return;
-
-    const filename = `photobothus-story-${Date.now()}.png`;
-    await trackDataAction(async () => {
-    try {
-      const file = await dataUrlToFile(storyDataUrl, filename);
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Photobothus Story',
-          text: 'Here is my Photobothus story image.',
-        });
-        return;
-      }
-    } catch (err) {
-      if (err?.name === 'AbortError') return;
-    }
-
-    downloadDataUrl(storyDataUrl, filename);
     });
   };
 
@@ -803,6 +698,8 @@ function EventEditor() {
   }
 
   const layoutName = layout ? getLayoutById(layout)?.name : 'Photo';
+  const printSize = getStripPrintSize(layout || 1);
+  const exportBusy = isGenerating || isSaving || isPrinting;
 
   const handleBackgroundSelect = (value, borderValue) => {
     setBackgroundPreview(null);
@@ -842,21 +739,33 @@ function EventEditor() {
       <header className="edit-toolbar">
         <span className="edit-toolbar-brand">Event booth</span>
         <div className="edit-toolbar-actions">
-          <button
-            type="button"
-            className="edit-download"
-            onClick={handleSaveOnline}
-            disabled={isGenerating || isSaving || uploadsRemaining === 0}
-          >
-            {isSaving
-              ? 'Uploading…'
-              : uploadsRemaining === 0
-                ? 'Limit reached'
-                : `Upload (${uploadsRemaining ?? maxGuestUploads} left)`}
-          </button>
-          <button type="button" className="edit-share" onClick={handleDownload} disabled={isGenerating}>Download PNG</button>
-          <button type="button" className="edit-share" onClick={handleNativeShare} disabled={isGenerating}>Share</button>
-          <button type="button" className="edit-share" onClick={handleShare} disabled={isGenerating || isGeneratingStory}>IG Story</button>
+          <div className="edit-toolbar-cluster" role="group" aria-label="Save and share">
+            <button
+              type="button"
+              className="edit-download edit-export-btn"
+              onClick={handleSaveOnline}
+              disabled={exportBusy || uploadsRemaining === 0}
+            >
+              <IconUpload />
+              {isSaving
+                ? 'Uploading…'
+                : uploadsRemaining === 0
+                  ? 'Limit reached'
+                  : `Upload (${uploadsRemaining ?? maxGuestUploads} left)`}
+            </button>
+            <button type="button" className="edit-share edit-export-btn" onClick={handleDownload} disabled={exportBusy}>
+              <IconDownload />
+              Download
+            </button>
+            <button type="button" className="edit-share edit-export-btn" onClick={handlePrint} disabled={exportBusy}>
+              <IconPrint />
+              {isPrinting ? 'Preparing…' : 'Print'}
+            </button>
+            <button type="button" className="edit-share edit-export-btn" onClick={handleNativeShare} disabled={exportBusy}>
+              <IconShare />
+              Share
+            </button>
+          </div>
           <button type="button" className="edit-close" onClick={handleClose}>Back</button>
         </div>
       </header>
@@ -868,6 +777,7 @@ function EventEditor() {
           {layoutName} · up to {maxGuestUploads} uploads
           {uploadsRemaining != null ? ` (${uploadsRemaining} left)` : ''}
         </p>
+        <StripPrintSpec size={printSize} className="edit-print-spec--hero" />
       </div>
 
       {(saveMessage || error) && (
@@ -898,25 +808,6 @@ function EventEditor() {
                 Take another
               </button>
               <button className="edit-modal-close" onClick={() => setIsUploadModalOpen(false)}>Keep editing</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isStoryModalOpen && (
-        <div className="edit-download-modal" role="dialog" aria-modal="true" aria-labelledby="story-modal-title">
-          <div className="edit-download-modal-card story-modal-card">
-            <h2 id="story-modal-title">Create Instagram Story</h2>
-            {storyDataUrl && <img src={storyDataUrl} alt="Photobothus Instagram Story template" className="edit-story-preview" />}
-            <p className="custom-modal-intro">Instagram does not allow web apps to upload directly to Stories. Save this image, open Instagram, create a Story, and upload it.</p>
-            <ol className="story-steps">
-              <li>Save the generated story image.</li>
-              <li>Open Instagram and create a new Story.</li>
-              <li>Upload the saved image and tap Share.</li>
-            </ol>
-            <div className="custom-modal-actions">
-              <button className="edit-download" onClick={handleShareDownload}>Download Story</button>
-              <button className="edit-modal-close" onClick={() => setIsStoryModalOpen(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -959,7 +850,6 @@ function EventEditor() {
                     <ul className="custom-sizes-list">
                       <li><strong>Classic 4-shot strip:</strong> 600 × 1800px (2×6 in @ 300 DPI)</li>
                       <li><strong>2×2 / 4x4 Frame:</strong> 1200 × 1800px (4×6 in @ 300 DPI)</li>
-                      <li><strong>IG Story / wallpaper:</strong> 1080 × 1920px (9:16)</li>
                       <li><strong>4x6 layouts:</strong> 1000 × 667px</li>
                     </ul>
                     <p className="custom-sizes-note">Use a PNG with transparent photo areas. Match the layout aspect ratio for best results.</p>

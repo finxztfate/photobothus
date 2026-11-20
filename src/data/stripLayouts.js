@@ -301,11 +301,32 @@ function getAreaSpans(areaGrid) {
   return spans;
 }
 
+/** Print spacing at 300 DPI. */
+export const STRIP_PRINT_DPI = 300;
+/** Space between photo frames inside a strip. */
+export const STRIP_FRAME_GAP = 12;
+/** 1/8" bleed / safe margin around the strip. */
+export const STRIP_BLEED_PX = Math.round((1 / 8) * STRIP_PRINT_DPI);
+/** Gutter between two strips on one sheet so they can be cut apart. */
+export const STRIP_CUT_GAP = STRIP_BLEED_PX;
+/** 2 mm (about a 4-ply mat) so a framed print does not sit against the glass. */
+export const STRIP_MAT_PX = Math.round((2 / 25.4) * STRIP_PRINT_DPI);
+
 export const STRIP_PADDING = {
-  top: 6,
-  side: 6,
-  bottom: 18,
+  top: 16,
+  side: 16,
+  bottom: 28,
 };
+
+export function stripPlacementOptions(padding = STRIP_PADDING) {
+  return {
+    paddingTop: padding.top,
+    paddingRight: padding.side,
+    paddingBottom: padding.bottom,
+    paddingLeft: padding.side,
+    gap: STRIP_FRAME_GAP,
+  };
+}
 
 export function getLayoutCellRects(layoutId, stripWidth, stripHeight, options = {}) {
   const layout = getLayoutById(layoutId);
@@ -314,7 +335,7 @@ export function getLayoutCellRects(layoutId, stripWidth, stripHeight, options = 
   const paddingBottom = options.paddingBottom ?? options.padding ?? STRIP_PADDING.bottom;
   const paddingLeft = options.paddingLeft ?? options.padding ?? STRIP_PADDING.side;
   const logoReserve = options.logoReserve ?? 0;
-  const gap = options.gap ?? 2;
+  const gap = options.gap ?? STRIP_FRAME_GAP;
   const gridW = stripWidth - paddingLeft - paddingRight;
   const gridH = stripHeight - paddingTop - paddingBottom - logoReserve;
 
@@ -377,6 +398,28 @@ export function computeStripDimensions(layoutId) {
   };
 }
 
+/** Physical print size for a single photobooth strip (not a twin cut sheet). */
+export function getStripPrintSize(layoutId) {
+  const { stripWidth, stripHeight } = computeStripDimensions(layoutId);
+  const widthIn = stripWidth / STRIP_PRINT_DPI;
+  const heightIn = stripHeight / STRIP_PRINT_DPI;
+  const formatInches = (value) => String(Math.round(value * 100) / 100);
+  return {
+    widthPx: stripWidth,
+    heightPx: stripHeight,
+    widthIn,
+    heightIn,
+    dpi: STRIP_PRINT_DPI,
+    label: `${formatInches(widthIn)} × ${formatInches(heightIn)} in`,
+  };
+}
+
+/** Narrow portrait strips print as a pair on one sheet. */
+export function shouldPrintTwinStrips(layoutId) {
+  const { stripWidth, stripHeight } = computeStripDimensions(layoutId);
+  return stripHeight > stripWidth && stripWidth <= 700;
+}
+
 /** Uniform booth capture frame — matches photobooth-io (4:3 preview + thumbs). */
 export const BOOTH_CAPTURE_ASPECT = 4 / 3;
 
@@ -387,13 +430,12 @@ export function getBoothCaptureAspect() {
 /** Aspect ratio (width / height) of a photo slot — matches strip compositor crop. */
 export function getLayoutPhotoSlotAspect(layoutId, photoIndex = 0) {
   const { stripWidth, stripHeight, padding } = computeStripDimensions(layoutId);
-  const placements = getPhotoPlacements(layoutId, stripWidth, stripHeight, {
-    paddingTop: padding.top,
-    paddingRight: padding.side,
-    paddingBottom: padding.bottom,
-    paddingLeft: padding.side,
-    gap: 2,
-  });
+  const placements = getPhotoPlacements(
+    layoutId,
+    stripWidth,
+    stripHeight,
+    stripPlacementOptions(padding)
+  );
   if (!placements.length) return 4 / 3;
   const placement = placements[photoIndex] ?? placements[placements.length - 1];
   return placement.w / placement.h;
