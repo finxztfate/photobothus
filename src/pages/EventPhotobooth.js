@@ -95,8 +95,7 @@ function EventPhotobooth() {
     setFlash(true);
     window.setTimeout(() => setFlash(false), 180);
     try {
-      const dataUrl = await cameraRef.current.captureBooth({
-        fit: 'contain',
+      const dataUrl = await cameraRef.current.captureNative({
         mirrored,
         settleMs: 50,
       });
