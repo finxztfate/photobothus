@@ -442,7 +442,7 @@ button.event-booth-back {
   overflow: hidden;
   background: #1a1a1a;
   cursor: pointer;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 3;
 }
 
 .event-booth-review-shot img {
