@@ -122,19 +122,20 @@ test('an admin cannot list or delete customer strips', async () => {
   assert.ok(app.db.tables.strips.some((row) => row.id === strip.id));
 });
 
-test('a guest is stopped after 3 uploads to the same event', async () => {
+test('a guest is stopped after 4 uploads to the same event', async () => {
   const event = app.db.addEvent({ owner_id: host.id, name: 'Guest cap' });
-  const key = 'guest-threelimit';
+  const key = 'guest-fourlimitxx';
   assert.equal((await app.guestUpload(event.code, key)).status, 201);
   assert.equal((await app.guestUpload(event.code, key)).status, 201);
-  const third = await app.guestUpload(event.code, key);
-  assert.equal(third.status, 201);
-  assert.equal(third.body.uploadsRemaining, 0);
-  assert.equal(third.body.maxGuestUploads, 3);
+  assert.equal((await app.guestUpload(event.code, key)).status, 201);
+  const fourth = await app.guestUpload(event.code, key);
+  assert.equal(fourth.status, 201);
+  assert.equal(fourth.body.uploadsRemaining, 0);
+  assert.equal(fourth.body.maxGuestUploads, 4);
 
   const refused = await app.guestUpload(event.code, key);
   assert.equal(refused.status, 403);
-  assert.match(refused.body.error, /3 photos/);
+  assert.match(refused.body.error, /4 photos/);
 });
 
 // ---- per-event photo cap
@@ -197,7 +198,7 @@ test('Download All sends every photo of the event as one ZIP', async () => {
   assert.match(response.headers.get('content-disposition'), /attachment; filename="Ana_Marco_Wedding-photos\.zip"/);
 
   const zip = Buffer.from(await response.arrayBuffer());
-  assert.deepEqual(zipEntryNames(zip), ['001-Classic_Strip.png', '002-photo.jpg']);
+  assert.deepEqual(zipEntryNames(zip), ['001-Classic_Strip.png', '002-strip.jpg']);
   // Stored uncompressed, so the image bytes are in the archive exactly as uploaded.
   assert.ok(zip.includes(TINY_PNG));
 });
@@ -210,4 +211,71 @@ test('Download All is owner-only and says so when there is nothing to send', asy
   const empty = await app.api('GET', `/api/events/${event.id}/download`, { as: host });
   assert.equal(empty.status, 404);
   assert.match(empty.body.error, /no photos to download/i);
+});
+
+test('a booth session stores layout and each photo as one guest upload', async () => {
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Session booth' });
+  const key = 'guest-sessionkey';
+  const created = await app.guestSessionUpload(event.code, key, { layoutId: 2, photoCount: 3 });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.guestUploadCount, 1);
+  assert.equal(created.body.strip.layoutId, 2);
+  assert.equal(created.body.strip.photoUrls.length, 3);
+
+  const patched = await app.guestPatchStrip(event.code, created.body.strip.id, key, {
+    look: { customBg: '#111111' },
+  });
+  assert.equal(patched.status, 200);
+  assert.equal(patched.body.guestUploadCount, 1);
+  assert.equal(patched.body.strip.look.customBg, '#111111');
+
+  event.is_active = 0;
+  const loaded = await app.api('GET', `/api/events/${event.id}/strips/${created.body.strip.id}`, { as: host });
+  assert.equal(loaded.status, 200);
+  assert.equal(loaded.body.strip.photoUrls.length, 3);
+  assert.equal(loaded.body.strip.layoutId, 2);
+
+  const token = app.signToken(host);
+  const zipRes = await fetch(`${app.baseUrl}/api/events/${event.id}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(zipRes.status, 200);
+  const names = zipEntryNames(Buffer.from(await zipRes.arrayBuffer()));
+  assert.equal(names.length, 1);
+  assert.match(names[0], /-Event_strip\./);
+});
+
+test('host cannot open a strip while the event is live', async () => {
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Live session' });
+  const created = await app.guestSessionUpload(event.code, 'guest-livekeyxx', { photoCount: 2 });
+  const live = await app.api('GET', `/api/events/${event.id}/strips/${created.body.strip.id}`, { as: host });
+  assert.equal(live.status, 403);
+});
+
+test('host can save a customized look after the event closes', async () => {
+  const event = app.db.addEvent({ owner_id: host.id, name: 'Host look' });
+  const first = await app.guestSessionUpload(event.code, 'guest-hostlookk', { layoutId: 1, photoCount: 4 });
+  const second = await app.guestSessionUpload(event.code, 'guest-hostlook2', { layoutId: 3, photoCount: 1 });
+  event.is_active = 0;
+  const form = new FormData();
+  form.append('look', JSON.stringify({ customBg: '#222222', showDate: true, dateX: 0.5, dateY: 0.92 }));
+  form.append('applyToEvent', '1');
+  const response = await fetch(`${app.baseUrl}/api/events/${event.id}/strips/${first.body.strip.id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${app.signToken(host)}` },
+    body: form,
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.strip.look.customBg, '#222222');
+  assert.equal(body.strip.look.dateY, 0.92);
+  assert.equal(body.strip.layoutId, 1);
+
+  const other = await app.api('GET', `/api/events/${event.id}/strips/${second.body.strip.id}`, { as: host });
+  assert.equal(other.status, 200);
+  assert.equal(other.body.strip.layoutId, 3);
+  assert.equal(other.body.strip.look.customBg, '#222222');
+  assert.equal(other.body.strip.look.showDate, true);
+  assert.equal(other.body.strip.look.dateX, undefined);
+  assert.equal(other.body.strip.look.dateY, undefined);
 });

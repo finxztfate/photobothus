@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS strips (
   event_id INT UNSIGNED DEFAULT NULL,
   title VARCHAR(255) DEFAULT NULL,
   image_url VARCHAR(500) NOT NULL,
+  layout_id INT UNSIGNED DEFAULT NULL,
+  photo_urls TEXT DEFAULT NULL,
+  look_json TEXT DEFAULT NULL,
   spotlight_opt_in TINYINT(1) NOT NULL DEFAULT 0,
   spotlight_details TEXT DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,7 +87,7 @@ CREATE TABLE IF NOT EXISTS spotlight_picks (
 INSERT INTO users (email, password_hash, display_name, role)
 SELECT
   'admin@photobothus.local',
-  '$2a$10$k4/sWdE4avW6hBcAUsF1MuCq1GDN9ZIDi5atC4ph2E14c.falv9Xi',
+  'admin123',
   'Admin',
   'admin'
 FROM DUAL
@@ -123,14 +126,14 @@ CREATE TABLE IF NOT EXISTS app_settings (
 ) ENGINE=InnoDB;
 
 INSERT INTO app_settings (setting_key, setting_value)
-SELECT 'max_guest_uploads', '3'
+SELECT 'max_guest_uploads', '4'
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM app_settings WHERE setting_key = 'max_guest_uploads'
 );
 
-UPDATE app_settings SET setting_value = '3'
-WHERE setting_key = 'max_guest_uploads' AND setting_value = '10';
+UPDATE app_settings SET setting_value = '4'
+WHERE setting_key = 'max_guest_uploads' AND setting_value IN ('3', '10');
 
 INSERT INTO app_settings (setting_key, setting_value)
 SELECT 'image_access_ttl_hours', '24'

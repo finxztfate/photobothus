@@ -18,12 +18,14 @@ import {
   EventHostDetailPage,
   EventHostCreatePage,
   EventHostEditPage,
+  EventEditor,
 } from './pages/events/host';
-import EventPublic from './pages/EventPublic';
-import EventLayouts from './pages/EventLayouts';
-import EventPhotobooth from './pages/EventPhotobooth';
-import EventEditor from './pages/EventEditor';
-import EventGuestShell from './pages/EventGuestShell';
+import {
+  EventGuestShell,
+  EventPublic,
+  EventLayouts,
+  EventPhotobooth,
+} from './pages/events/guest';
 import AdminLogin from './pages/AdminLogin';
 import AdminShell from './pages/AdminShell';
 import AdminOverview from './pages/AdminOverview';
@@ -111,6 +113,7 @@ function App() {
               <Route path="/events" element={<SitePage className="page-home" {...navProps}><EventHostListPage /></SitePage>} />
               <Route path="/events/new" element={<SitePage className="page-home" {...navProps}><EventHostCreatePage /></SitePage>} />
               <Route path="/events/:id/edit" element={<SitePage className="page-home" {...navProps}><EventHostEditPage /></SitePage>} />
+              <Route path="/events/:id/strips/:stripId/edit" element={<SitePage className="page-home" {...navProps}><EventEditor /></SitePage>} />
               <Route path="/events/:id" element={<SitePage className="page-home" {...navProps}><EventHostDetailPage /></SitePage>} />
 
               {/* Guest event flow — own shell + pages (not site navbar / normal booth) */}
@@ -122,7 +125,7 @@ function App() {
                     <EventPhotobooth />
                   </div>
                 } />
-                <Route path="editor" element={<EventEditor />} />
+                <Route path="editor" element={<Navigate to="../photobooth" replace />} />
               </Route>
 
               <Route path="/editor" element={<div className="page-fade"><EditPage /></div>} />

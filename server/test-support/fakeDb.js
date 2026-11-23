@@ -134,7 +134,7 @@ function createFakeDb() {
     }],
 
     // ---- strips
-    [/^SELECT id, user_id, guest_key, event_id, title, image_url, created_at FROM strips WHERE event_id = \? AND \(\? IS NULL OR id < \?\) ORDER BY id DESC LIMIT \?/, ([eventId, before, , limit]) =>
+    [/^SELECT id, user_id, guest_key, event_id, title, image_url, layout_id, photo_urls, look_json, created_at FROM strips WHERE event_id = \? AND \(\? IS NULL OR id < \?\) ORDER BY id DESC LIMIT \?/, ([eventId, before, , limit]) =>
       [page(eventStrips(eventId), before, limit)]],
     [/^SELECT id, user_id, event_id, title, image_url, spotlight_opt_in, spotlight_details, created_at FROM strips WHERE user_id = \? AND event_id IS NULL AND \(\? IS NULL OR id < \?\) ORDER BY id DESC LIMIT \?/, ([userId, before, , limit]) =>
       [page(tables.strips.filter((s) => s.user_id === userId && s.event_id == null), before, limit)]],
@@ -148,6 +148,8 @@ function createFakeDb() {
       [tables.strips.filter((s) =>
         s.id === Number(stripId) && s.event_id === Number(eventId) &&
         tables.events.some((e) => e.id === s.event_id && e.owner_id === ownerId))]],
+    [/^SELECT id, title, image_url, photo_urls FROM strips WHERE event_id = \? ORDER BY id ASC/, ([eventId]) =>
+      [eventStrips(eventId).sort((a, b) => a.id - b.id)]],
     [/^SELECT id, title, image_url FROM strips WHERE event_id = \? ORDER BY id ASC/, ([eventId]) =>
       [eventStrips(eventId).sort((a, b) => a.id - b.id)]],
     [/^SELECT DISTINCT e\.id FROM events e JOIN strips s ON s\.event_id = e\.id WHERE e\.is_active = 0/, () => {
@@ -158,6 +160,7 @@ function createFakeDb() {
       )];
       return [ids.map((id) => ({ id }))];
     }],
+    [/^SELECT id, image_url, photo_urls FROM strips WHERE event_id = \?/, ([eventId]) => [eventStrips(eventId)]],
     [/^SELECT id, image_url FROM strips WHERE event_id = \?/, ([eventId]) => [eventStrips(eventId)]],
     [/^DELETE FROM strips WHERE event_id = \?/, ([eventId]) => {
       const doomed = new Set(eventStrips(eventId).map((strip) => strip.id));
@@ -166,13 +169,47 @@ function createFakeDb() {
       tables.picks = tables.picks.filter((pick) => !doomed.has(pick.strip_id));
       return [{ affectedRows: before - tables.strips.length }];
     }],
+    [/^SELECT image_url, photo_urls FROM strips WHERE event_id = \?/, ([eventId]) => [eventStrips(eventId)]],
     [/^SELECT image_url FROM strips WHERE event_id = \?/, ([eventId]) => [eventStrips(eventId)]],
     [/^SELECT COUNT\(\*\) AS count FROM strips WHERE event_id = \? AND guest_key = \?/, ([eventId, guestKey]) =>
       [[{ count: eventStrips(eventId).filter((s) => s.guest_key === guestKey).length }]]],
     [/^SELECT COUNT\(\*\) AS count FROM strips WHERE event_id = \?/, ([eventId]) => [[{ count: eventStrips(eventId).length }]]],
     [/^SELECT COUNT\(\*\) AS count FROM strips$/, () => [[{ count: tables.strips.length }]]],
-    [/^INSERT INTO strips \(user_id, guest_key, event_id, title, image_url\) VALUES \(NULL, \?, \?, \?, \?\)/, ([guest_key, event_id, title, image_url]) =>
-      [{ insertId: insert('strips', { user_id: null, guest_key, event_id, title, image_url }).id }]],
+    [/^INSERT INTO strips \(user_id, guest_key, event_id, title, image_url, layout_id, photo_urls, look_json\) VALUES \(NULL, \?, \?, \?, \?, \?, \?, \?\)/, ([guest_key, event_id, title, image_url, layout_id, photo_urls, look_json]) =>
+      [{ insertId: insert('strips', { user_id: null, guest_key, event_id, title, image_url, layout_id, photo_urls, look_json }).id }]],
+    [/^SELECT \* FROM strips WHERE id = \? AND event_id = \? AND guest_key = \?/, ([id, eventId, guestKey]) =>
+      [tables.strips.filter((s) => s.id === Number(id) && s.event_id === Number(eventId) && s.guest_key === guestKey)]],
+    [/^SELECT \* FROM strips WHERE id = \? AND event_id = \?/, ([id, eventId]) =>
+      [tables.strips.filter((s) => s.id === Number(id) && s.event_id === Number(eventId))]],
+    [/^UPDATE strips SET look_json = \? WHERE event_id = \? AND id <> \?/, ([lookJson, eventId, skipId]) => {
+      const matches = tables.strips.filter(
+        (s) => s.event_id === Number(eventId) && s.id !== Number(skipId)
+      );
+      matches.forEach((strip) => {
+        strip.look_json = lookJson;
+      });
+      return [{ affectedRows: matches.length }];
+    }],
+    [/^UPDATE strips SET look_json = \? WHERE event_id = \?/, ([lookJson, eventId]) => {
+      const matches = tables.strips.filter((s) => s.event_id === Number(eventId));
+      matches.forEach((strip) => {
+        strip.look_json = lookJson;
+      });
+      return [{ affectedRows: matches.length }];
+    }],
+    [/^UPDATE strips SET image_url = COALESCE\(\?, image_url\) WHERE id = \?/, ([imageUrl, id]) => {
+      const strip = tables.strips.find((s) => s.id === Number(id));
+      if (strip && imageUrl != null) strip.image_url = imageUrl;
+      return [{ affectedRows: strip ? 1 : 0 }];
+    }],
+    [/^UPDATE strips SET image_url = COALESCE\(\?, image_url\), look_json = COALESCE\(\?, look_json\) WHERE id = \?/, ([imageUrl, lookJson, id]) => {
+      const strip = tables.strips.find((s) => s.id === Number(id));
+      if (strip) {
+        if (imageUrl != null) strip.image_url = imageUrl;
+        if (lookJson != null) strip.look_json = lookJson;
+      }
+      return [{ affectedRows: strip ? 1 : 0 }];
+    }],
     [/^INSERT INTO strips \(user_id, event_id, title, image_url\) VALUES \(\?, NULL, \?, \?\)/, ([user_id, title, image_url]) =>
       [{ insertId: insert('strips', { user_id, guest_key: null, event_id: null, title, image_url }).id }]],
     [/^SELECT id FROM strips WHERE id = \? AND user_id = \? AND event_id IS NULL/, ([id, userId]) =>
@@ -182,6 +219,7 @@ function createFakeDb() {
       const ids = new Set(params.slice(1).map(Number));
       return [tables.strips.filter((s) => s.user_id === userId && s.event_id == null && ids.has(s.id))];
     }],
+    [/^SELECT id, image_url, photo_urls FROM strips WHERE id = \?/, ([id]) => [tables.strips.filter((s) => s.id === Number(id))]],
     [/^SELECT id, image_url FROM strips WHERE id = \?/, ([id]) => [tables.strips.filter((s) => s.id === Number(id))]],
     [/^SELECT \* FROM strips WHERE id = \?/, ([id]) => [tables.strips.filter((s) => s.id === Number(id))]],
     [/^DELETE FROM strips WHERE id = \?/, ([id]) => {
@@ -300,7 +338,10 @@ function createFakeDb() {
         welcome_message: null, hashtags: null, strips_enabled: 0, is_active: 1, completed_at: null,
         code: `code${ids.events + 1}`, ...row,
       }),
-    addStrip: (row) => insert('strips', { user_id: null, guest_key: null, event_id: null, title: null, image_url: 'missing.png', spotlight_opt_in: 0, spotlight_details: null, ...row }),
+    addStrip: (row) => insert('strips', {
+      user_id: null, guest_key: null, event_id: null, title: null, image_url: 'missing.png',
+      layout_id: null, photo_urls: null, look_json: null, spotlight_opt_in: 0, spotlight_details: null, ...row,
+    }),
   };
 }
 

@@ -79,6 +79,42 @@ export async function uploadStrip(endpoint, file, title, extraFields = {}) {
   return apiRequest(endpoint, { method: 'POST', body: form });
 }
 
+export async function uploadEventSession(code, {
+  guestKey,
+  title,
+  layoutId,
+  look,
+  previewFile,
+  photoFiles = [],
+} = {}) {
+  const form = new FormData();
+  form.append('guestKey', guestKey);
+  if (title) form.append('title', title);
+  if (layoutId != null) form.append('layoutId', String(layoutId));
+  if (look) form.append('look', typeof look === 'string' ? look : JSON.stringify(look));
+  if (previewFile) form.append('image', previewFile);
+  photoFiles.forEach((file, index) => {
+    form.append('photos', file, file.name || `photo-${index}.png`);
+  });
+  return apiRequest(`/api/public/events/${code}/strips`, { method: 'POST', body: form });
+}
+
+export async function patchEventStrip(code, stripId, { guestKey, look, previewFile } = {}) {
+  const form = new FormData();
+  form.append('guestKey', guestKey);
+  if (look) form.append('look', typeof look === 'string' ? look : JSON.stringify(look));
+  if (previewFile) form.append('image', previewFile);
+  return apiRequest(`/api/public/events/${code}/strips/${stripId}`, { method: 'PATCH', body: form });
+}
+
+export async function patchHostStrip(eventId, stripId, { look, previewFile, applyToEvent = false } = {}) {
+  const form = new FormData();
+  if (look) form.append('look', typeof look === 'string' ? look : JSON.stringify(look));
+  if (previewFile) form.append('image', previewFile);
+  if (applyToEvent) form.append('applyToEvent', '1');
+  return apiRequest(`/api/events/${eventId}/strips/${stripId}`, { method: 'PATCH', body: form });
+}
+
 /** Downloads a file from an API route that needs the user to be signed in. */
 export async function downloadFile(path, filename) {
   const blob = await trackDataAction(async () => {

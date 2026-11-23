@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
-import { apiRequest } from '../utils/api';
+import { apiRequest } from '../../../utils/api';
 import './EventGuestShell.css';
 
 function EventGuestShell() {
@@ -9,9 +9,7 @@ function EventGuestShell() {
   const [event, setEvent] = useState(null);
   const [unavailable, setUnavailable] = useState('');
   const [checked, setChecked] = useState(false);
-  const onEditor = location.pathname.includes('/editor');
-  const onBooth = location.pathname.includes('/photobooth');
-  const hideNav = onEditor || onBooth;
+  const hideNav = location.pathname.includes('/photobooth');
 
   useEffect(() => {
     if (!code) return undefined;
@@ -40,7 +38,6 @@ function EventGuestShell() {
     };
   }, [code]);
 
-  const stripsEnabled = !!event?.stripsEnabled && event?.isActive !== false;
   const closed = !!event && event.isActive === false;
   const infoPath = `/e/${code}`;
 
@@ -77,30 +74,21 @@ function EventGuestShell() {
   return (
     <div className={`event-guest-shell${hideNav ? ' is-compact' : ''}`}>
       {!hideNav && (
-      <header className="event-guest-nav">
-        <div className="event-guest-nav-brand">
-          <Link to={`/e/${code}`} className="event-guest-nav-title">
-            {event?.name || 'Event photobooth'}
-          </Link>
-          <span className="event-guest-nav-sub">Guest session</span>
-        </div>
-        <nav className="event-guest-nav-links" aria-label="Event guest navigation">
-          <NavLink to={`/e/${code}`} end>
-            Event
-          </NavLink>
-          {!closed && stripsEnabled && (
-            <NavLink to={`/e/${code}/layouts`}>Layouts</NavLink>
-          )}
-          {!closed && (
-            <NavLink to={stripsEnabled ? `/e/${code}/photobooth` : `/e/${code}/photobooth?layout=3`}>
-              Booth
+        <header className="event-guest-nav">
+          <div className="event-guest-nav-brand">
+            <Link to={`/e/${code}`} className="event-guest-nav-title">
+              {event?.name || 'Event photobooth'}
+            </Link>
+            <span className="event-guest-nav-sub">Guest session</span>
+          </div>
+          <nav className="event-guest-nav-links" aria-label="Event guest navigation">
+            <NavLink to={`/e/${code}`} end>
+              Event
             </NavLink>
-          )}
-          {onEditor && (
-            <NavLink to={`/e/${code}/editor`}>Editor</NavLink>
-          )}
-        </nav>
-      </header>
+            {!closed && <NavLink to={`/e/${code}/layouts`}>Layouts</NavLink>}
+            {!closed && <NavLink to={`/e/${code}/photobooth`}>Booth</NavLink>}
+          </nav>
+        </header>
       )}
       <div key={location.pathname} className="event-guest-main page-fade">
         <Outlet context={{ event, code }} />

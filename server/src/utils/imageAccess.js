@@ -29,8 +29,10 @@ function verifyStripImageAccess(token, stripId) {
   }
 }
 
-function stripImageUrl(stripId, accessToken) {
-  return `/api/strips/${stripId}/image?access=${encodeURIComponent(accessToken)}`;
+function stripImageUrl(stripId, accessToken, slot) {
+  const base = `/api/strips/${stripId}/image?access=${encodeURIComponent(accessToken)}`;
+  if (slot == null || slot === '') return base;
+  return `${base}&slot=${encodeURIComponent(slot)}`;
 }
 
 module.exports = {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest, downloadFile } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import { EventHostDashLayout } from './components/EventHostSidebar';
@@ -11,6 +11,7 @@ import './EventHostDetailPage.css';
 
 function EventHostDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { isAuthenticated, isCustomer, loading } = useAuth();
   const [event, setEvent] = useState(null);
   const [strips, setStrips] = useState([]);
@@ -20,10 +21,11 @@ function EventHostDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const [removingId, setRemovingId] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [downloadPrompt, setDownloadPrompt] = useState(false);
 
   const eventUrl = useMemo(() => {
     if (!event?.code) return '';
-    return `${window.location.origin}/e/${event.code}/photobooth`;
+    return `${window.location.origin}/e/${event.code}`;
   }, [event]);
 
   // The gallery loads a page at a time, so the totals come from the event itself.
@@ -120,8 +122,14 @@ function EventHostDetailPage() {
     }
   };
 
+  const requestDownloadAll = () => {
+    if (!stripCount || event?.isActive) return;
+    setDownloadPrompt(true);
+  };
+
   const downloadAll = async () => {
     if (!stripCount || event?.isActive) return;
+    setDownloadPrompt(false);
     setDownloading(true);
     setError('');
     try {
@@ -202,16 +210,52 @@ function EventHostDetailPage() {
           )}
 
           <EventHostGallery
+            eventId={id}
             strips={strips}
             total={stripCount}
             loadingMore={loadingMore}
             onLoadMore={loadMore}
             downloading={downloading}
-            onDownloadAll={downloadAll}
+            onDownloadAll={requestDownloadAll}
             onRemove={removeStrip}
             removingId={removingId}
             locked={event.isActive}
           />
+
+          {downloadPrompt && (
+            <div className="event-host-modal" role="dialog" aria-modal="true" aria-labelledby="download-prompt-title">
+              <div className="event-host-modal-card">
+                <h2 id="download-prompt-title">Customize the strip first</h2>
+                <p>
+                  Set background, frame, and date on any guest strip. That look is applied to every
+                  guest strip. The ZIP is one laid-out strip per guest (their layout, plus your look
+                  if you saved one).
+                </p>
+                <div className="event-host-modal-actions">
+                  <button
+                    type="button"
+                    className="event-host-btn primary"
+                    onClick={() => {
+                      setDownloadPrompt(false);
+                      if (strips[0]) {
+                        navigate(`/events/${id}/strips/${strips[0].id}/edit`);
+                      }
+                    }}
+                  >
+                    Customize a strip
+                  </button>
+                  <button
+                    type="button"
+                    className="event-host-btn"
+                    onClick={downloadAll}
+                    disabled={downloading}
+                  >
+                    {downloading ? 'Preparing ZIP…' : 'Download ZIP'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       </div>

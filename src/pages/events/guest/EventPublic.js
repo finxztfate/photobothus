@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiRequest, getEventGuestKey } from '../utils/api';
-import { formatEventTimeRange, parseEventDate } from '../utils/eventSchedule';
-import { DEFAULT_MAX_GUEST_UPLOADS } from '../data/eventLimits';
+import { apiRequest, getEventGuestKey } from '../../../utils/api';
+import { formatEventTimeRange, parseEventDate } from '../../../utils/eventSchedule';
+import { DEFAULT_MAX_GUEST_UPLOADS } from '../../../data/eventLimits';
+import { clearEditorSession } from '../../../utils/eventSession';
 import './EventPublic.css';
-import './EventEditor.css';
+import '../host/EventEditor.css';
 
 function formatEventDate(value) {
   const date = parseEventDate(value);
@@ -57,20 +58,11 @@ function EventPublic() {
       return;
     }
     sessionStorage.setItem('eventCode', code);
-    if (event?.stripsEnabled) {
-      navigate(`/e/${code}/layouts`);
-    } else {
-      navigate(`/e/${code}/photobooth?layout=3`);
-    }
+    navigate(`/e/${code}/layouts`);
   };
 
   const goHome = () => {
-    try {
-      sessionStorage.removeItem('eventEditorState');
-      sessionStorage.removeItem('eventCode');
-    } catch {
-      /* ignore */
-    }
+    clearEditorSession();
     navigate('/');
   };
 
@@ -165,12 +157,10 @@ function EventPublic() {
                 onClick={startBooth}
                 disabled={!!event.eventFull}
               >
-                Start booth
+                Choose a layout
               </button>
               <p className="event-public-hint">
-                {event.stripsEnabled
-                  ? 'Works best on your phone. Pick a layout, capture, then upload.'
-                  : 'Works best on your phone. Capture, edit, then upload to this event.'}
+                Works best on your phone. Tap a strip layout to open the booth, then send to the event.
                 {' '}Each guest can upload {maxGuestUploads} photos.
               </p>
             </div>

@@ -51,7 +51,7 @@ function EventHostShareQrPanel({ eventUrl, event }) {
         <p className="event-host-kicker">Guest booth</p>
         <h2>Share this event</h2>
         <p>
-          Guests scan the QR or open the link to use the booth.
+          Guests scan the QR or open the link, then tap a strip layout to open the booth.
           Each guest can upload {DEFAULT_MAX_GUEST_UPLOADS} photos.
         </p>
         <div className="event-host-share-row">

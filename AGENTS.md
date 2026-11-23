@@ -6,8 +6,12 @@ src/
 ├── components/     # Reusable UI components (Camera.js)
 ├── hooks/          # Custom React hooks (useFaceDetection.js)
 ├── data/           # Static data and configurations (filterTemplates.js, photoboothData.js)
-├── utils/          # Utility functions (customization.js)
-├── pages/          # Page/route components (Home.js, Gallery.js, Photobooth.js, Layout.js)
+├── utils/          # Shared helpers (customization.js, eventLook.js, eventBoothSession.js)
+├── pages/
+│   ├── Home.js, Gallery.js, Photobooth.js, Layout.js, …
+│   └── events/
+│       ├── host/   # /events/* dashboard + strip look editor
+│       └── guest/  # /e/:code/* landing, layouts, booth
 ├── App.js          # Main app with router
 └── index.js        # Entry point
 ```

@@ -3,7 +3,13 @@ const { pool } = require('../db');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { upload, prepareUploadedImage, discardUploadedFile, readStoredPhoto } = require('../utils/upload');
 const { verifyStripImageAccess } = require('../utils/imageAccess');
-const { mapStripRow, mapStripRows, canAccessStripImage, deleteStripById } = require('../utils/stripHelpers');
+const {
+  mapStripRow,
+  mapStripRows,
+  canAccessStripImage,
+  deleteStripById,
+  parsePhotoUrls,
+} = require('../utils/stripHelpers');
 const { readPage, pageOf } = require('../utils/pagination');
 const { readSpotlightDetails, parseSpotlightDetails } = require('../utils/spotlightDetails');
 
@@ -36,7 +42,14 @@ router.get('/:id/image', optionalAuth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const photo = readStoredPhoto(strip.image_url);
+    const slotRaw = req.query.slot;
+    const slot = slotRaw == null || slotRaw === '' ? null : Number(slotRaw);
+    const cellKeys = parsePhotoUrls(strip.photo_urls);
+    const stored =
+      slot != null && Number.isInteger(slot) && slot >= 0 && slot < cellKeys.length
+        ? cellKeys[slot]
+        : strip.image_url;
+    const photo = readStoredPhoto(stored);
     if (!photo) {
       return res.status(404).json({ error: 'Image file not found' });
     }

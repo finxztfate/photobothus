@@ -2,8 +2,23 @@ const express = require('express');
 const yazl = require('yazl');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { generateEventCode, readStoredPhoto, extensionForMime } = require('../utils/upload');
-const { mapStripRows, deleteStripById, deleteEventAndFiles } = require('../utils/stripHelpers');
+const {
+  generateEventCode,
+  readStoredPhoto,
+  extensionForMime,
+  upload,
+  prepareUploadedImage,
+  discardUploadedFile,
+  removeStoredFile,
+} = require('../utils/upload');
+const {
+  mapStripRow,
+  mapStripRows,
+  deleteStripById,
+  deleteEventAndFiles,
+  storedKeysForStrip,
+} = require('../utils/stripHelpers');
+const { lookJsonFromBody, applyLookToEvent, saveStripLook } = require('../utils/stripLook');
 const { closeExpiredEventsQuietly, readInstant, toDateOnly } = require('../utils/eventSchedule');
 const { readPage, pageOf } = require('../utils/pagination');
 const { isEventCreationEnabled } = require('../utils/settings');
@@ -245,10 +260,12 @@ router.get('/:id/download', async (req, res) => {
       'SELECT id, title, image_url FROM strips WHERE event_id = ? ORDER BY id ASC',
       [events[0].id]
     );
-    // A photo whose file has gone missing is left out instead of failing the whole download.
-    const files = rows
-      .map((row) => ({ row, photo: readStoredPhoto(row.image_url) }))
-      .filter(({ photo }) => photo);
+    // One laid-out strip per guest session (preview already has layout + saved look).
+    const files = [];
+    rows.forEach((row) => {
+      const preview = readStoredPhoto(row.image_url);
+      if (preview) files.push({ row, photo: preview });
+    });
     if (!files.length) {
       return res.status(404).json({ error: 'No photos to download' });
     }
@@ -260,7 +277,7 @@ router.get('/:id/download', async (req, res) => {
     });
     files.forEach(({ row, photo }, index) => {
       const number = String(index + 1).padStart(3, '0');
-      const name = `${number}-${safeFileName(row.title, 'photo')}${extensionForMime(photo.mime)}`;
+      const name = `${number}-${safeFileName(row.title, 'strip')}${extensionForMime(photo.mime)}`;
       // Images are already compressed, so they are stored as they are.
       zip.addBuffer(photo.buffer, name, { compress: false });
     });
@@ -297,7 +314,7 @@ router.get('/:id/strips', async (req, res) => {
 
     const { limit, before } = readPage(req.query);
     const [rows] = await pool.query(
-      `SELECT id, user_id, guest_key, event_id, title, image_url, created_at
+      `SELECT id, user_id, guest_key, event_id, title, image_url, layout_id, photo_urls, look_json, created_at
        FROM strips
        WHERE event_id = ? AND (? IS NULL OR id < ?)
        ORDER BY id DESC
@@ -309,6 +326,92 @@ router.get('/:id/strips', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load event strips' });
+  }
+});
+
+router.get('/:id/strips/:stripId', async (req, res) => {
+  try {
+    const [events] = await pool.query(
+      'SELECT id, is_active FROM events WHERE id = ? AND owner_id = ? LIMIT 1',
+      [req.params.id, req.user.id]
+    );
+    if (!events.length) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (events[0].is_active) {
+      return res.status(403).json({ error: 'Guest photos can be viewed after the event ends.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT * FROM strips WHERE id = ? AND event_id = ? LIMIT 1',
+      [req.params.stripId, events[0].id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Strip not found' });
+    }
+    res.json({ strip: await mapStripRow(rows[0]) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load strip' });
+  }
+});
+
+router.patch('/:id/strips/:stripId', upload.single('image'), async (req, res) => {
+  let committed = false;
+  let newImageKey = null;
+  try {
+    const [events] = await pool.query(
+      'SELECT id, is_active FROM events WHERE id = ? AND owner_id = ? LIMIT 1',
+      [req.params.id, req.user.id]
+    );
+    if (!events.length) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (events[0].is_active) {
+      return res.status(403).json({ error: 'Guest photos can be viewed after the event ends.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT * FROM strips WHERE id = ? AND event_id = ? LIMIT 1',
+      [req.params.stripId, events[0].id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Strip not found' });
+    }
+
+    const lookJson = lookJsonFromBody(req.body);
+    if (!req.file && lookJson == null) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+    if (req.file) {
+      newImageKey = prepareUploadedImage(req.file);
+    }
+
+    await saveStripLook(pool, {
+      eventId: events[0].id,
+      stripId: rows[0].id,
+      lookJson,
+      imageKey: newImageKey,
+      applyToEvent: applyLookToEvent(req.body),
+    });
+    committed = true;
+
+    if (newImageKey && rows[0].image_url && rows[0].image_url !== newImageKey) {
+      const keep = new Set(storedKeysForStrip({ ...rows[0], image_url: newImageKey }));
+      if (!keep.has(rows[0].image_url)) removeStoredFile(rows[0].image_url);
+    }
+
+    const [updated] = await pool.query('SELECT * FROM strips WHERE id = ?', [rows[0].id]);
+    res.json({ strip: await mapStripRow(updated[0]) });
+  } catch (err) {
+    const status = err.status || 500;
+    if (status >= 500) console.error(err);
+    res.status(status).json({ error: status === 400 ? err.message : 'Failed to update strip' });
+  } finally {
+    if (!committed) {
+      discardUploadedFile(req.file);
+      if (newImageKey) removeStoredFile(newImageKey);
+    }
   }
 });
 

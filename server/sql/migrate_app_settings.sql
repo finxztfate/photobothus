@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
 ) ENGINE=InnoDB;
 
 INSERT INTO app_settings (setting_key, setting_value)
-SELECT 'max_guest_uploads', '3'
+SELECT 'max_guest_uploads', '4'
 WHERE NOT EXISTS (
   SELECT 1 FROM app_settings WHERE setting_key = 'max_guest_uploads'
 );

@@ -5,7 +5,7 @@ import LayoutPreview from '../components/LayoutPreview';
 import { getAvailableCameras, getFilterFrame } from '../data/photoboothData';
 import { getLayoutById, getLayoutPhotoCount, resolveLayoutId } from '../data/filterTemplates';
 import { enterMobileFullscreen } from '../utils/mobileFullscreen';
-import './EventPhotobooth.css';
+import './events/guest/EventPhotobooth.css';
 
 const LIVE_FILTERS = ['normal', 'bwfilm', 'vintage', 'seventies'];
 const TIMER_CYCLE = [3, 5, 0];

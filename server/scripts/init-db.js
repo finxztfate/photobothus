@@ -68,6 +68,30 @@ async function ensureSpotlightColumn(connection, database) {
   }
 }
 
+async function ensureStripSessionColumns(connection, database) {
+  const [columns] = await connection.query(
+    `SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'strips'
+       AND COLUMN_NAME IN ('layout_id', 'photo_urls', 'look_json')`,
+    [database]
+  );
+  const existing = new Set(columns.map((column) => column.name));
+  const changes = [];
+  if (!existing.has('layout_id')) {
+    changes.push('ADD COLUMN layout_id INT UNSIGNED DEFAULT NULL AFTER image_url');
+  }
+  if (!existing.has('photo_urls')) {
+    changes.push('ADD COLUMN photo_urls TEXT DEFAULT NULL AFTER layout_id');
+  }
+  if (!existing.has('look_json')) {
+    changes.push('ADD COLUMN look_json TEXT DEFAULT NULL AFTER photo_urls');
+  }
+  if (changes.length) {
+    await connection.query(`ALTER TABLE strips ${changes.join(', ')}`);
+    console.log('Added strip session columns');
+  }
+}
+
 async function main() {
   const schema = fs
     .readFileSync(schemaPath, 'utf8')
@@ -82,6 +106,7 @@ async function main() {
     console.log(`Schema applied to "${config.database}" on ${config.host}:${config.port}`);
     await ensureEventScheduleColumns(connection, config.database);
     await ensureSpotlightColumn(connection, config.database);
+    await ensureStripSessionColumns(connection, config.database);
 
     // Only replaces the public default, so a password changed later in admin settings is kept.
     if (process.env.ADMIN_PASSWORD) {

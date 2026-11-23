@@ -20,7 +20,7 @@ function EventHostCreatePage() {
     location: '',
     welcomeMessage: '',
     hashtags: '',
-    stripsEnabled: false,
+    stripsEnabled: true,
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);

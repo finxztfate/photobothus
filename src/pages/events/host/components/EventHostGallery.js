@@ -1,4 +1,7 @@
+import { Link } from 'react-router-dom';
+
 function EventHostGallery({
+  eventId,
   strips,
   total = strips.length,
   loadingMore = false,
@@ -19,7 +22,7 @@ function EventHostGallery({
           <span>
             {locked
               ? `${total} photo${total === 1 ? '' : 's'} collected · hidden until the event ends`
-              : `showing ${strips.length} of ${total} photo${total === 1 ? '' : 's'}`}
+              : `showing ${strips.length} of ${total} · Tap a strip to customize all photos`}
           </span>
         </div>
         <button
@@ -68,7 +71,17 @@ function EventHostGallery({
                   {removingId === strip.id ? 'Removing…' : 'Remove'}
                 </button>
               )}
-              <img src={strip.imageUrl} alt={strip.title || `Guest photo ${index + 1}`} />
+              {eventId ? (
+                <Link
+                  className="event-host-gallery-open"
+                  to={`/events/${eventId}/strips/${strip.id}/edit`}
+                  aria-label={`Customize strip ${index + 1}`}
+                >
+                  <img src={strip.imageUrl} alt={strip.title || `Guest photo ${index + 1}`} />
+                </Link>
+              ) : (
+                <img src={strip.imageUrl} alt={strip.title || `Guest photo ${index + 1}`} />
+              )}
             </article>
           ))}
         </div>

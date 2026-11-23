@@ -68,6 +68,30 @@ async function startTestApp() {
     return { status: response.status, body: await response.json() };
   }
 
+  /** Uploads a booth session: layout + each cell photo (+ optional preview). */
+  async function guestSessionUpload(code, guestKey, { layoutId = 1, photoCount = 2, title = 'Event strip', look } = {}) {
+    const form = new FormData();
+    form.append('guestKey', guestKey);
+    form.append('layoutId', String(layoutId));
+    if (title) form.append('title', title);
+    if (look) form.append('look', typeof look === 'string' ? look : JSON.stringify(look));
+    form.append('image', new Blob([TINY_PNG], { type: 'image/png' }), 'preview.png');
+    for (let i = 0; i < photoCount; i += 1) {
+      form.append('photos', new Blob([TINY_PNG], { type: 'image/png' }), `cell-${i}.png`);
+    }
+    const response = await fetch(`${baseUrl}/api/public/events/${code}/strips`, { method: 'POST', body: form });
+    return { status: response.status, body: await response.json() };
+  }
+
+  async function guestPatchStrip(code, stripId, guestKey, { look, image = true } = {}) {
+    const form = new FormData();
+    form.append('guestKey', guestKey);
+    if (look) form.append('look', typeof look === 'string' ? look : JSON.stringify(look));
+    if (image) form.append('image', new Blob([TINY_PNG], { type: 'image/png' }), 'preview.png');
+    const response = await fetch(`${baseUrl}/api/public/events/${code}/strips/${stripId}`, { method: 'PATCH', body: form });
+    return { status: response.status, body: await response.json() };
+  }
+
   /** Puts a real file in the uploads folder and returns its storage key. */
   function storeFile(name, contents = TINY_PNG) {
     fs.writeFileSync(path.join(uploadsDir, name), contents);
@@ -79,7 +103,7 @@ async function startTestApp() {
     fs.rmSync(uploadsDir, { recursive: true, force: true });
   }
 
-  return { db, api, guestUpload, storeFile, stop, baseUrl, signToken, uploadsDir };
+  return { db, api, guestUpload, guestSessionUpload, guestPatchStrip, storeFile, stop, baseUrl, signToken, uploadsDir };
 }
 
 module.exports = { startTestApp, TINY_PNG };
