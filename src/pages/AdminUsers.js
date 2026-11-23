@@ -94,23 +94,95 @@ function AdminUsers() {
         <div>
           <h1>Customers</h1>
           <p>
-            Host accounts and ticket balances. Issue tickets from the control on the right after a confirmed sale or a recorded complimentary grant.
+            Host accounts and ticket balances. Issue tickets from the form below after a confirmed sale or a recorded complimentary grant.
           </p>
         </div>
       </header>
       {error && <p className="admin-error">{error}</p>}
       {success && <p className="admin-success">{success}</p>}
 
-      <section className="dash-bottom-row">
+      <section className="dash-customers">
+        <div className="dash-panel dash-money-panel dash-issue-panel">
+          <div className="dash-panel-head">
+            <div>
+              <h2>Issue tickets</h2>
+              <p className="dash-muted">Adds to the host balance and writes a paid ledger line for audit.</p>
+            </div>
+          </div>
+          <form className="dash-form dash-issue-form" onSubmit={openConfirm}>
+            <label>
+              Customer
+              <select
+                value={form.userId}
+                onChange={(e) => setForm((current) => ({ ...current, userId: e.target.value }))}
+                required
+              >
+                <option value="">Select a host</option>
+                {customers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {customerLabel(user)} · {user.tickets ?? 0} tickets
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Quantity
+              <input
+                type="number"
+                min="1"
+                max="99"
+                value={form.tickets}
+                onChange={(e) => setForm((current) => ({ ...current, tickets: e.target.value }))}
+                required
+              />
+            </label>
+            <label className="dash-issue-reason">
+              Reason
+              <input
+                value={form.note}
+                onChange={(e) => setForm((current) => ({ ...current, note: e.target.value }))}
+                placeholder="Paid GCash transfer, complimentary, replacement…"
+                maxLength={255}
+                required
+              />
+            </label>
+            <div className="dash-issue-submit">
+              <div className="admin-pack-fill" role="group" aria-label="Sold pack sizes">
+                {PACKS.map((pack) => (
+                  <button
+                    key={pack}
+                    type="button"
+                    className={Number(form.tickets) === pack ? 'is-active' : undefined}
+                    onClick={() => setForm((current) => ({ ...current, tickets: String(pack) }))}
+                  >
+                    {pack}
+                  </button>
+                ))}
+              </div>
+              <button type="submit" disabled={saving || !customers.length}>
+                {saving ? 'Issuing…' : 'Review and issue'}
+              </button>
+            </div>
+            {selected ? (
+              <p className="dash-muted dash-issue-balance">
+                Current balance: {selected.tickets ?? 0}. After this grant:{' '}
+                {Number.isInteger(ticketCount) && ticketCount > 0
+                  ? (selected.tickets ?? 0) + ticketCount
+                  : '—'}
+              </p>
+            ) : null}
+          </form>
+        </div>
+
         <div className="dash-panel dash-panel-table">
           <div className="dash-panel-head">
             <div>
               <h2>Accounts</h2>
-              <p className="dash-muted">Select a host to fill the issue form.</p>
+              <p className="dash-muted">Every host on the system. Use Issue to fill the form above.</p>
             </div>
           </div>
           <div className="dash-table-wrap">
-            <table className="admin-table dash-table dash-table-responsive">
+            <table className="admin-table dash-table dash-table-responsive dash-accounts-table">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -153,76 +225,6 @@ function AdminUsers() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div className="dash-panel dash-money-panel">
-          <div className="dash-panel-head">
-            <div>
-              <h2>Issue tickets</h2>
-              <p className="dash-muted">Adds to the host balance and writes a paid ledger line for audit.</p>
-            </div>
-          </div>
-          <form className="dash-form" onSubmit={openConfirm}>
-            <label>
-              Customer
-              <select
-                value={form.userId}
-                onChange={(e) => setForm((current) => ({ ...current, userId: e.target.value }))}
-                required
-              >
-                <option value="">Select a host</option>
-                {customers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {customerLabel(user)} · {user.tickets ?? 0} tickets
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selected ? (
-              <p className="dash-muted">
-                Current balance: {selected.tickets ?? 0}. After this grant:{' '}
-                {Number.isInteger(ticketCount) && ticketCount > 0
-                  ? (selected.tickets ?? 0) + ticketCount
-                  : '—'}
-              </p>
-            ) : null}
-            <label>
-              Quantity
-              <input
-                type="number"
-                min="1"
-                max="99"
-                value={form.tickets}
-                onChange={(e) => setForm((current) => ({ ...current, tickets: e.target.value }))}
-                required
-              />
-            </label>
-            <div className="admin-pack-fill" role="group" aria-label="Sold pack sizes">
-              {PACKS.map((pack) => (
-                <button
-                  key={pack}
-                  type="button"
-                  className={Number(form.tickets) === pack ? 'is-active' : undefined}
-                  onClick={() => setForm((current) => ({ ...current, tickets: String(pack) }))}
-                >
-                  {pack}-ticket pack
-                </button>
-              ))}
-            </div>
-            <label>
-              Reason
-              <input
-                value={form.note}
-                onChange={(e) => setForm((current) => ({ ...current, note: e.target.value }))}
-                placeholder="Paid GCash transfer, complimentary, replacement…"
-                maxLength={255}
-                required
-              />
-            </label>
-            <button type="submit" disabled={saving || !customers.length}>
-              {saving ? 'Issuing…' : 'Review and issue'}
-            </button>
-          </form>
         </div>
       </section>
 
