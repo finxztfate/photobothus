@@ -39,6 +39,7 @@ import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
 import ThemeToggle from './components/ThemeToggle';
 import { AuthProvider, useAuth } from './utils/auth';
+import { apiRequest } from './utils/api';
 import { SPOTLIGHT_ENABLED } from './data/features';
 import './App.css';
 
@@ -168,6 +169,7 @@ function AppNavbar({ theme, toggleTheme }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [tickets, setTickets] = useState(null);
   const profileRef = useRef(null);
   const profileName = user?.displayName || user?.email || 'Account';
   const profileInitial = String(profileName).trim().charAt(0).toUpperCase() || 'A';
@@ -188,6 +190,23 @@ function AppNavbar({ theme, toggleTheme }) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [menuOpen, profileOpen]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isCustomer) {
+      setTickets(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiRequest('/api/tickets', { silent: true });
+        if (!cancelled) setTickets(Number(data.tickets || 0));
+      } catch {
+        if (!cancelled) setTickets(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isCustomer, location.pathname]);
 
   useEffect(() => {
     if (!profileOpen) return undefined;
@@ -224,6 +243,16 @@ function AppNavbar({ theme, toggleTheme }) {
           {!loading && (
             isAuthenticated ? (
               <>
+                {isCustomer && tickets != null && (
+                  <Link
+                    to="/events/new"
+                    className="nav-tickets"
+                    title="Event tickets"
+                  >
+                    <span className="nav-tickets-count">{tickets}</span>
+                    <span className="nav-tickets-label">{tickets === 1 ? 'ticket' : 'tickets'}</span>
+                  </Link>
+                )}
                 <div className="nav-profile" ref={profileRef}>
                   <button
                     type="button"

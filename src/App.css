@@ -316,6 +316,33 @@ nav a,
   font-family: var(--font-subheading);
 }
 
+.nav-tickets {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 237, 211, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--nav-text);
+  text-decoration: none;
+  font-family: var(--font-subheading);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.nav-tickets:hover {
+  border-color: var(--accent);
+  color: var(--nav-text);
+}
+
+.nav-tickets-count {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
 .nav-profile {
   position: relative;
 }
@@ -641,6 +668,12 @@ nav a,
     gap: 10px;
     padding-top: 14px;
     border-top: 1px solid rgba(255, 237, 211, 0.12);
+  }
+
+  .nav-tickets {
+    justify-content: center;
+    flex: 1;
+    min-height: 44px;
   }
 
   .nav-actions .nav-login,

@@ -1,4 +1,4 @@
-econst express = require('express');
+const express = require('express');
 const { pool } = require('../db');
 const { upload, prepareUploadedImage, discardUploadedFile, removeStoredFile } = require('../utils/upload');
 const { mapStripRow, parseLookJson, storedKeysForStrip } = require('../utils/stripHelpers');

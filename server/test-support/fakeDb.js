@@ -6,8 +6,8 @@
 const db = require('../src/db');
 
 function createFakeDb() {
-  const tables = { users: [], events: [], strips: [], picks: [], likes: [], settings: new Map() };
-  const ids = { users: 0, events: 0, strips: 0, picks: 0, likes: 0 };
+  const tables = { users: [], events: [], strips: [], picks: [], likes: [], payments: [], settings: new Map() };
+  const ids = { users: 0, events: 0, strips: 0, picks: 0, likes: 0, payments: 0 };
 
   const insert = (table, row) => {
     ids[table] += 1;
@@ -33,6 +33,38 @@ function createFakeDb() {
 
   const handlers = [
     // ---- users
+    [/^SELECT event_tickets, potw_wins FROM users WHERE id = \?/, ([id]) =>
+      [tables.users.filter((u) => u.id === Number(id))]],
+    [/^SELECT potw_wins FROM users WHERE id = \?/, ([id]) =>
+      [tables.users.filter((u) => u.id === Number(id))]],
+    [/^UPDATE users SET event_tickets = event_tickets \+ \? WHERE id = \?/, ([count, id]) => {
+      const user = tables.users.find((u) => u.id === Number(id));
+      if (!user) return [{ affectedRows: 0 }];
+      user.event_tickets = Number(user.event_tickets || 0) + Number(count);
+      return [{ affectedRows: 1 }];
+    }],
+    [/^UPDATE users SET event_tickets = event_tickets - 1 WHERE id = \? AND event_tickets > 0/, ([id]) => {
+      const user = tables.users.find((u) => u.id === Number(id));
+      if (!user || Number(user.event_tickets || 0) < 1) return [{ affectedRows: 0 }];
+      user.event_tickets = Number(user.event_tickets) - 1;
+      return [{ affectedRows: 1 }];
+    }],
+    [/^UPDATE users SET potw_wins = potw_wins \+ 1 WHERE id = \?/, ([id]) => {
+      const user = tables.users.find((u) => u.id === Number(id));
+      if (!user) return [{ affectedRows: 0 }];
+      user.potw_wins = Number(user.potw_wins || 0) + 1;
+      return [{ affectedRows: 1 }];
+    }],
+    [/^SELECT user_id FROM strips WHERE id = \?/, ([id]) =>
+      [tables.strips.filter((s) => s.id === Number(id)).map((s) => ({ user_id: s.user_id }))]],
+    [/^INSERT INTO payments \(user_id, event_id, amount, currency, type, status, note\) VALUES \(\?, NULL, \?, 'PHP', 'event_hosting', 'pending', \?\)/, ([user_id, amount, note]) =>
+      [{ insertId: insert('payments', { user_id, event_id: null, amount, currency: 'PHP', type: 'event_hosting', status: 'pending', note }).id }]],
+    [/^INSERT INTO payments \(user_id, event_id, amount, currency, type, status, note\) VALUES \(\?, \?, \?, \?, \?, \?, \?\)/, ([user_id, event_id, amount, currency, type, status, note]) =>
+      [{ insertId: insert('payments', { user_id, event_id, amount, currency, type, status, note }).id }]],
+    [/^SELECT \* FROM payments WHERE id = \?/, ([id]) =>
+      [tables.payments.filter((p) => p.id === Number(id))]],
+    [/^SELECT id, email, display_name, role, event_tickets, potw_wins, created_at FROM users WHERE role = 'customer'/, () =>
+      [tables.users.filter((u) => u.role === 'customer')]],
     [/^SELECT id, email, display_name, avatar_url, role, created_at FROM users WHERE id = \?/, ([id]) =>
       [tables.users.filter((u) => u.id === Number(id))]],
     [/^SELECT id, email, password_hash, google_id, display_name, avatar_url, role, created_at FROM users WHERE google_id = \?/, ([googleId]) =>
@@ -454,7 +486,10 @@ function createFakeDb() {
   return {
     tables,
     query,
-    addUser: (row) => insert('users', { display_name: null, avatar_url: null, password_hash: null, google_id: null, role: 'customer', ...row }),
+    addUser: (row) => insert('users', {
+      display_name: null, avatar_url: null, password_hash: null, google_id: null, role: 'customer',
+      event_tickets: 20, potw_wins: 0, ...row,
+    }),
     addEvent: (row) =>
       insert('events', {
         host_name: null, event_date: null, starts_at: null, ends_at: null, location: null,

@@ -104,6 +104,27 @@ async function ensureStripSessionColumns(connection, database) {
   }
 }
 
+async function ensureEventTickets(connection, database) {
+  const [columns] = await connection.query(
+    `SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'
+       AND COLUMN_NAME IN ('event_tickets', 'potw_wins')`,
+    [database]
+  );
+  const existing = new Set(columns.map((column) => column.name));
+  const changes = [];
+  if (!existing.has('event_tickets')) {
+    changes.push('ADD COLUMN event_tickets INT UNSIGNED NOT NULL DEFAULT 0 AFTER role');
+  }
+  if (!existing.has('potw_wins')) {
+    changes.push('ADD COLUMN potw_wins INT UNSIGNED NOT NULL DEFAULT 0 AFTER event_tickets');
+  }
+  if (changes.length) {
+    await connection.query(`ALTER TABLE users ${changes.join(', ')}`);
+    console.log('Added event ticket columns');
+  }
+}
+
 async function ensureSpotlightLikes(connection, database) {
   const [tables] = await connection.query(
     `SELECT 1 FROM information_schema.TABLES
@@ -133,6 +154,7 @@ async function main() {
     await ensureSpotlightColumn(connection, config.database);
     await ensureStripSessionColumns(connection, config.database);
     await ensureSpotlightLikes(connection, config.database);
+    await ensureEventTickets(connection, config.database);
 
     // Only replaces the public default, so a password changed later in admin settings is kept.
     if (process.env.ADMIN_PASSWORD) {

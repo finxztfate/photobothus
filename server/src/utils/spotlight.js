@@ -2,6 +2,7 @@ const { pool } = require('../db');
 const { mapStripRow } = require('./stripHelpers');
 const { parseSpotlightDetails } = require('./spotlightDetails');
 const { getSetting } = require('./settings');
+const { recordPotwWin } = require('./tickets');
 
 const HOME_LIMIT = 3;
 const WEEK_WIN_MIN_LIKES = 10;
@@ -161,6 +162,10 @@ async function crownWeekWinner(now = new Date()) {
       'INSERT INTO spotlight_picks (strip_id, slot, caption, created_at) VALUES (?, ?, NULL, ?)',
       [winnerId, 'week', at]
     );
+  }
+  const [owners] = await pool.query('SELECT user_id FROM strips WHERE id = ? LIMIT 1', [winnerId]);
+  if (owners[0]?.user_id) {
+    await recordPotwWin(owners[0].user_id);
   }
   await expireStaleEntries(weekKey);
 }

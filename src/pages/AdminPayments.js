@@ -32,6 +32,8 @@ function AdminPayments() {
     type: 'event_hosting',
     status: 'paid',
     note: '',
+    userId: '',
+    tickets: '1',
   });
 
   const loadPayments = async () => {
@@ -83,9 +85,11 @@ function AdminPayments() {
           type: form.type,
           status: form.status,
           note: form.note,
+          userId: form.userId ? Number(form.userId) : undefined,
+          tickets: form.tickets ? Number(form.tickets) : undefined,
         },
       });
-      setForm({ amount: '', type: 'event_hosting', status: 'paid', note: '' });
+      setForm({ amount: '', type: 'event_hosting', status: 'paid', note: '', userId: '', tickets: '1' });
       await loadPayments();
     } catch (err) {
       setError(err.message);
@@ -213,6 +217,28 @@ function AdminPayments() {
                   <option value="refunded">Refunded</option>
                   <option value="failed">Failed</option>
                 </select>
+              </label>
+            </div>
+            <div className="dash-form-row">
+              <label>
+                Customer ID
+                <input
+                  type="number"
+                  min="1"
+                  value={form.userId}
+                  onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
+                  placeholder="User id"
+                />
+              </label>
+              <label>
+                Tickets to grant
+                <input
+                  type="number"
+                  min="1"
+                  value={form.tickets}
+                  onChange={(e) => setForm((f) => ({ ...f, tickets: e.target.value }))}
+                  placeholder="1"
+                />
               </label>
             </div>
             <label>

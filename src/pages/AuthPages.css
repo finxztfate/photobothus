@@ -54,6 +54,7 @@
 .auth-card.event-details-card .auth-kicker,
 .auth-card.event-details-card .auth-subtitle,
 .auth-card.event-details-card .auth-hint,
+.auth-card.event-details-card .event-ticket-packs,
 .auth-card.event-details-card .auth-error,
 .auth-card.event-details-card .auth-checkbox,
 .auth-card.event-details-card .event-details-span,
@@ -319,6 +320,17 @@
   margin-top: -6px;
   color: var(--text-muted);
   font-size: 0.82rem;
+}
+
+.event-ticket-packs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-ticket-packs button {
+  flex: 1;
+  min-width: 120px;
 }
 
 .auth-hint.is-error {

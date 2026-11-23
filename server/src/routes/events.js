@@ -22,6 +22,7 @@ const { lookJsonFromBody, applyLookToEvent, saveStripLook } = require('../utils/
 const { closeExpiredEventsQuietly, readInstant, toDateOnly } = require('../utils/eventSchedule');
 const { readPage, pageOf } = require('../utils/pagination');
 const { isEventCreationEnabled } = require('../utils/settings');
+const { getTicketAccount, spendEventTicket, addTickets } = require('../utils/tickets');
 
 const router = express.Router();
 
@@ -160,9 +161,11 @@ router.get('/', async (req, res) => {
       [req.user.id]
     );
     const canCreate = await isEventCreationEnabled();
+    const tickets = await getTicketAccount(req.user.id);
     res.json({
       events: rows.map(mapEvent),
       canCreate,
+      ...tickets,
     });
   } catch (err) {
     console.error(err);
@@ -171,6 +174,7 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  let spentTicket = false;
   try {
     const fields = readEventFields(req.body);
     requireEventDetails(fields);
@@ -180,6 +184,14 @@ router.post('/', async (req, res) => {
 
     if (!(await isEventCreationEnabled())) {
       return res.status(403).json({ error: 'Event creation is turned off.' });
+    }
+
+    spentTicket = await spendEventTicket(req.user.id);
+    if (!spentTicket) {
+      return res.status(402).json({
+        error: 'An event ticket is required. Buy a pack or win Photo of the Week 3 times.',
+        code: 'EVENT_TICKET_REQUIRED',
+      });
     }
 
     let code = generateEventCode();
@@ -214,8 +226,13 @@ router.post('/', async (req, res) => {
         throw err;
       }
     }
+    await addTickets(req.user.id, 1);
+    spentTicket = false;
     res.status(500).json({ error: 'Could not generate unique event code' });
   } catch (err) {
+    if (spentTicket) {
+      await addTickets(req.user.id, 1).catch(() => {});
+    }
     sendEventError(res, err, 'Failed to create event');
   }
 });

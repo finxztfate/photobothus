@@ -21,6 +21,7 @@ const {
   weekIsCurrent,
   loadAdminStandings,
 } = require('../utils/spotlight');
+const { addTickets } = require('../utils/tickets');
 const bcrypt = require('bcryptjs');
 
 const router = express.Router();
@@ -456,6 +457,7 @@ router.post('/payments', async (req, res) => {
     const note = String(req.body.note || '').trim() || null;
     const userId = req.body.userId ? Number(req.body.userId) : null;
     const eventId = req.body.eventId ? Number(req.body.eventId) : null;
+    const tickets = req.body.tickets != null ? Number(req.body.tickets) : (type === 'event_hosting' ? 1 : 0);
 
     const allowedTypes = ['event_hosting', 'strip_pack', 'premium', 'other'];
     const allowedStatus = ['pending', 'paid', 'refunded', 'failed'];
@@ -477,6 +479,10 @@ router.post('/payments', async (req, res) => {
     );
 
     const [rows] = await pool.query('SELECT * FROM payments WHERE id = ?', [result.insertId]);
+    let account = null;
+    if (status === 'paid' && userId && Number.isInteger(tickets) && tickets > 0) {
+      account = await addTickets(userId, tickets);
+    }
     res.status(201).json({
       payment: {
         id: rows[0].id,
@@ -489,6 +495,7 @@ router.post('/payments', async (req, res) => {
         note: rows[0].note,
         createdAt: rows[0].created_at,
       },
+      tickets: account,
     });
   } catch (err) {
     console.error(err);
@@ -496,10 +503,28 @@ router.post('/payments', async (req, res) => {
   }
 });
 
+router.post('/tickets', async (req, res) => {
+  try {
+    const userId = Number(req.body.userId);
+    const tickets = Number(req.body.tickets);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(400).json({ error: 'A customer is required' });
+    }
+    const account = await addTickets(userId, tickets);
+    res.status(201).json({ userId, ...account });
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Failed to grant tickets' });
+  }
+});
+
 router.get('/users', async (_req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, email, display_name, role, created_at
+      `SELECT id, email, display_name, role, event_tickets, potw_wins, created_at
        FROM users
        WHERE role = 'customer'
        ORDER BY created_at DESC`
@@ -510,6 +535,8 @@ router.get('/users', async (_req, res) => {
         email: row.email,
         displayName: row.display_name,
         role: row.role,
+        tickets: Number(row.event_tickets || 0),
+        potwWins: Number(row.potw_wins || 0),
         createdAt: row.created_at,
       })),
     });
