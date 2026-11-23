@@ -248,16 +248,10 @@ const Camera = forwardRef(function Camera(
     } else {
       constraints.facingMode = { ideal: 'user' };
     }
-    if (constraintTier === 0) {
-      if (portrait) {
-        constraints.width = { ideal: 1080 };
-        constraints.height = { ideal: 1440 };
-        constraints.aspectRatio = { ideal: 3 / 4 };
-      } else {
-        constraints.width = { ideal: 1280 };
-        constraints.height = { ideal: 960 };
-        constraints.aspectRatio = { ideal: 4 / 3 };
-      }
+    if (constraintTier === 0 && !portrait) {
+      constraints.width = { ideal: 1280 };
+      constraints.height = { ideal: 960 };
+      constraints.aspectRatio = { ideal: 4 / 3 };
     }
     return constraints;
   };
