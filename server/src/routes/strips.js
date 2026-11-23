@@ -12,6 +12,7 @@ const {
 } = require('../utils/stripHelpers');
 const { readPage, pageOf } = require('../utils/pagination');
 const { readSpotlightDetails, parseSpotlightDetails } = require('../utils/spotlightDetails');
+const { weekStartKey, getSpotlightTz } = require('../utils/spotlight');
 
 const router = express.Router();
 
@@ -102,7 +103,7 @@ router.get('/', async (req, res) => {
   try {
     const { limit, before } = readPage(req.query);
     const [rows] = await pool.query(
-      `SELECT id, user_id, event_id, title, image_url, spotlight_opt_in, spotlight_details, created_at
+      `SELECT id, user_id, event_id, title, image_url, layout_id, spotlight_opt_in, spotlight_details, created_at
        FROM strips
        WHERE user_id = ? AND event_id IS NULL AND (? IS NULL OR id < ?)
        ORDER BY id DESC
@@ -167,8 +168,12 @@ router.patch('/:id', async (req, res) => {
     }
 
     if (!req.body.spotlightOptIn) {
-      await pool.query('UPDATE strips SET spotlight_opt_in = ? WHERE id = ?', [0, rows[0].id]);
+      await pool.query(
+        'UPDATE strips SET spotlight_opt_in = 0, spotlight_week_start = NULL WHERE id = ?',
+        [rows[0].id]
+      );
       await pool.query('DELETE FROM spotlight_picks WHERE strip_id = ?', [rows[0].id]);
+      await pool.query('DELETE FROM spotlight_likes WHERE strip_id = ?', [rows[0].id]);
       return res.json({ ok: true, spotlightOptIn: false });
     }
 
@@ -176,11 +181,32 @@ router.patch('/:id', async (req, res) => {
     if (parsed.error) {
       return res.status(400).json({ error: parsed.error });
     }
-    await pool.query(
-      'UPDATE strips SET spotlight_opt_in = ?, spotlight_details = ? WHERE id = ?',
-      [1, JSON.stringify(parsed.details), rows[0].id]
+
+    const [others] = await pool.query(
+      `SELECT id FROM strips
+       WHERE user_id = ? AND id <> ? AND event_id IS NULL AND spotlight_opt_in = 1
+       LIMIT 1`,
+      [req.user.id, rows[0].id]
     );
-    res.json({ ok: true, spotlightOptIn: true, spotlightDetails: parsed.details });
+    if (others.length) {
+      return res.status(409).json({
+        error: 'You can only have one strip on Spotlight. Remove the current one first.',
+        code: 'SPOTLIGHT_ENTRY_LIMIT',
+        existingStripId: others[0].id,
+      });
+    }
+
+    const tz = await getSpotlightTz();
+    const weekKey = weekStartKey(new Date(), tz);
+    await pool.query(
+      'UPDATE strips SET spotlight_opt_in = ?, spotlight_details = ?, spotlight_week_start = ? WHERE id = ?',
+      [1, JSON.stringify(parsed.details), weekKey, rows[0].id]
+    );
+    res.json({
+      ok: true,
+      spotlightOptIn: true,
+      spotlightDetails: parsed.details,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update Spotlight permission' });

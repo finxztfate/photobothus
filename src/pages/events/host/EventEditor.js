@@ -30,6 +30,7 @@ import { EventLimitModal, EventDoneModal } from './components/EventEditorModals'
 import EventCaptureReview from './components/EventCaptureReview';
 import EventEditorLookView from './components/EventEditorLookView';
 import '../../Home.css';
+import '../../EditPage.css';
 import './EventEditor.css';
 
 function EventEditor() {

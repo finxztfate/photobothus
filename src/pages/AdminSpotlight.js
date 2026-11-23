@@ -10,12 +10,14 @@ function AdminSpotlight() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [weekLockedUntil, setWeekLockedUntil] = useState(null);
+  const [standings, setStandings] = useState([]);
 
   const load = async () => {
     const data = await apiRequest('/api/admin/spotlight');
     setStrips(data.strips || []);
     setPicks(data.picks || []);
     setWeekLockedUntil(data.weekLockedUntil || null);
+    setStandings(data.standings || []);
   };
 
   useEffect(() => {
@@ -27,6 +29,7 @@ function AdminSpotlight() {
         setStrips(data.strips || []);
         setPicks(data.picks || []);
         setWeekLockedUntil(data.weekLockedUntil || null);
+        setStandings(data.standings || []);
       } catch (err) {
         if (!cancelled) setError(err.message);
       }
@@ -81,7 +84,7 @@ function AdminSpotlight() {
       <header className="admin-header dash-header">
         <div>
           <h1>Spotlight</h1>
-          <p>Feature strips a signed-in customer has allowed to be shown.</p>
+          <p>Home carousel is a staff pick. Photo of the week needs 10 hearts; otherwise the slot stays empty until the next Sunday midnight.</p>
         </div>
       </header>
       {error && <p className="admin-error">{error}</p>}
@@ -99,6 +102,15 @@ function AdminSpotlight() {
           </p>
         )}
         <p className="dash-muted">Home carousel: {home.length} of 3</p>
+        <h3 className="dash-muted">This week’s standings</h3>
+        <ul className="admin-spotlight-picks">
+          {standings.map((row) => (
+            <li key={row.stripId}>
+              <span>{row.likes} ♥ · {row.credit} — {row.title || 'Untitled'}</span>
+            </li>
+          ))}
+          {!standings.length && <li className="dash-muted">No votes yet this week.</li>}
+        </ul>
         <ul className="admin-spotlight-picks">
           {picks.map((pick) => (
             <li key={pick.id}>

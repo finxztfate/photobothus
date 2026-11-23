@@ -6,7 +6,6 @@
   --spot-quote: #E8A33D;
   --spot-band: rgba(140, 6, 6, 1);
   --spot-band-mid: rgba(95, 4, 4, 0.75);
-  --spot-strip-glow: rgba(232, 140, 20, 0.85);
   --spot-frame-empty: #2b2722;
   --spot-creator-bg: #3F1010;
   --spot-details-bg: #2E100D;
@@ -22,7 +21,6 @@
   --spot-quote: #8a5410;
   --spot-band: rgba(196, 120, 24, 0.6);
   --spot-band-mid: rgba(196, 120, 24, 0.25);
-  --spot-strip-glow: rgba(182, 114, 20, 0.6);
   --spot-frame-empty: #3a332b;
   --spot-creator-bg: rgba(182, 114, 20, 0.2);
   --spot-details-bg: rgba(182, 114, 20, 0.12);
@@ -108,13 +106,10 @@
 .spot-strip {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  width: min(100%, clamp(280px, 40vw, 560px));
-  padding: 9px;
-  background: #050505;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 26px 36px -10px var(--spot-strip-glow);
+  gap: 8px;
+  width: min(100%, 380px);
+  padding: 0;
+  background: transparent;
 }
 
 .spot-strip-frame {
@@ -141,7 +136,7 @@
 
 .spot-quote {
   max-width: 560px;
-  margin: 56px 0 0;
+  margin: 24px 0 0;
   font-size: 1.3rem;
   line-height: 1.4;
   color: var(--spot-quote);
@@ -277,7 +272,18 @@
 .spot-creator-handle {
   font-size: 1.05rem;
   color: var(--text-heading);
-  margin: 2px 0 0;
+  margin: 8px 0 0;
+}
+
+.spot-creator-handle a,
+.spot-details-row a {
+  color: var(--spot-accent);
+  text-decoration: none;
+}
+
+.spot-creator-handle a:hover,
+.spot-details-row a:hover {
+  text-decoration: underline;
 }
 
 .spot-creator-location {
@@ -497,6 +503,135 @@
   .spot-next-btn {
     min-width: 0;
     font-size: 0.78rem;
+  }
+}
+
+.spot-layout {
+  width: 100%;
+  box-shadow: none;
+}
+
+.spot-contest {
+  max-width: 1400px;
+  width: 100%;
+  margin: 48px auto 0;
+  padding: 0 24px 24px;
+  box-sizing: border-box;
+}
+
+.spot-contest-panel {
+  padding: 36px 32px 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 0;
+}
+
+.spot-contest-title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.spot-contest-text {
+  text-align: center;
+  color: var(--text-body);
+  max-width: 640px;
+  margin: 0 auto 28px;
+}
+
+.spot-contest-panel .spot-empty {
+  margin: 12px auto 0;
+}
+
+.spot-contest-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px 16px;
+}
+
+.spot-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-card);
+  border-radius: 0;
+}
+
+.spot-strip--entry {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  gap: 0;
+}
+
+.spot-strip--entry .spot-strip-frame,
+.spot-strip--entry .spot-strip-frame img {
+  width: 100%;
+}
+
+.spot-strip--entry .spot-layout,
+.spot-strip--entry .layout-cell-img {
+  max-width: 100%;
+}
+
+.spot-entry-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.spot-entry-credit {
+  margin: 0;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spot-like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  margin-left: auto;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-heading);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+
+.spot-like.is-liked,
+.spot-like:hover {
+  color: #e23b4a;
+}
+
+.spot-heart-icon {
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 900px) {
+  .spot-contest-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .spot-contest-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

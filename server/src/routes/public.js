@@ -1,16 +1,17 @@
-const express = require('express');
+econst express = require('express');
 const { pool } = require('../db');
 const { upload, prepareUploadedImage, discardUploadedFile, removeStoredFile } = require('../utils/upload');
 const { mapStripRow, parseLookJson, storedKeysForStrip } = require('../utils/stripHelpers');
 const { loadPublicSpotlight } = require('../utils/spotlight');
+const { optionalAuth } = require('../middleware/auth');
 const { getMaxGuestUploads, getMaxEventUploads } = require('../utils/settings');
 const { closeExpiredEventsQuietly, toDateOnly } = require('../utils/eventSchedule');
 
 const router = express.Router();
 
-router.get('/spotlight', async (_req, res) => {
+router.get('/spotlight', optionalAuth, async (req, res) => {
   try {
-    res.json(await loadPublicSpotlight());
+    res.json(await loadPublicSpotlight(req.user || null));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load Spotlight' });

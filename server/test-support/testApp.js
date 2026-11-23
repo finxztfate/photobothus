@@ -31,6 +31,7 @@ async function startTestApp() {
   app.use('/api/events', require('../src/routes/events'));
   app.use('/api/strips', require('../src/routes/strips'));
   app.use('/api/public', require('../src/routes/public'));
+  app.use('/api/spotlight', require('../src/routes/spotlight'));
   app.use('/api/admin', require('../src/routes/admin'));
 
   const server = await new Promise((resolve) => {

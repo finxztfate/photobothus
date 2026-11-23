@@ -14,7 +14,6 @@ import CustomFrameModal from '../components/CustomFrameModal';
 import { enterMobileFullscreen } from '../utils/mobileFullscreen';
 import {
   IconDownload,
-  IconGallery,
   IconPrint,
   StripPrintSpec,
 } from '../components/StripExportIcons';
@@ -112,8 +111,6 @@ function EditPage() {
   // Signed-in customers can also keep the strip in their Photobothus account.
   const { isCustomer } = useAuth();
   const [isSavingToGallery, setIsSavingToGallery] = useState(false);
-  const [justSavedToGallery, setJustSavedToGallery] = useState(false);
-  const galleryTimerRef = useRef(null);
   const stripGenerationRef = useRef(0);
   const skipInitialRegenRef = useRef(
     !fromBooth
@@ -295,20 +292,29 @@ function EditPage() {
     }
   }, [customFramePreview, capturedPhotos.length, generatePreviewStrip]);
 
-  const handleDownload = async () => {
+  const handleSaveStrip = async () => {
     await trackDataAction(async () => {
-    setIsExporting(true);
-    try {
-      const dataUrl = await generateStrip({ forExport: true });
-      if (!dataUrl) return;
-      downloadDataUrl(dataUrl, `photobooth-strip-${Date.now()}.png`);
-      setHasDownloaded(true);
-      setJustSaved(true);
-      window.clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = window.setTimeout(() => setJustSaved(false), 2200);
-    } finally {
-      setIsExporting(false);
-    }
+      setIsExporting(true);
+      setIsSavingToGallery(true);
+      try {
+        const dataUrl = await generateStrip({ forExport: true });
+        if (!dataUrl) return;
+        const filename = `photobooth-strip-${Date.now()}.png`;
+        downloadDataUrl(dataUrl, filename);
+        setHasDownloaded(true);
+        if (isCustomer) {
+          const file = await dataUrlToFile(dataUrl, filename);
+          await uploadStrip('/api/strips', file, getLayoutById(layout)?.name || 'Photo strip');
+        }
+        setJustSaved(true);
+        window.clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = window.setTimeout(() => setJustSaved(false), 2200);
+      } catch (err) {
+        setError(err.message || (isCustomer ? 'Could not save this strip' : 'Could not download this strip'));
+      } finally {
+        setIsExporting(false);
+        setIsSavingToGallery(false);
+      }
     });
   };
 
@@ -329,29 +335,6 @@ function EditPage() {
   };
 
   useEffect(() => () => window.clearTimeout(savedTimerRef.current), []);
-
-  const handleSaveToGallery = async () => {
-    await trackDataAction(async () => {
-    setIsSavingToGallery(true);
-    try {
-      const dataUrl = await generateStrip({ forExport: true });
-      if (!dataUrl) return;
-      const file = await dataUrlToFile(dataUrl, `photobooth-strip-${Date.now()}.png`);
-      await uploadStrip('/api/strips', file, getLayoutById(layout)?.name || 'Photo strip');
-      // The strip is safe in the account now, so leaving no longer needs a warning.
-      setHasDownloaded(true);
-      setJustSavedToGallery(true);
-      window.clearTimeout(galleryTimerRef.current);
-      galleryTimerRef.current = window.setTimeout(() => setJustSavedToGallery(false), 2200);
-    } catch (err) {
-      setError(err.message || 'Could not save to your account');
-    } finally {
-      setIsSavingToGallery(false);
-    }
-    });
-  };
-
-  useEffect(() => () => window.clearTimeout(galleryTimerRef.current), []);
 
   const confirmLeave = (message) => (
     hasDownloaded || capturedPhotos.length === 0 || window.confirm(message)
@@ -573,13 +556,23 @@ function EditPage() {
             <button
               type="button"
               className={`edit-download edit-action-primary edit-export-btn${justSaved ? ' is-saved' : ''}`}
-              onClick={handleDownload}
+              onClick={handleSaveStrip}
               disabled={isBusy || capturedPhotos.length === 0}
             >
               <IconDownload />
-              {justSaved ? 'Saved to your device' : isExporting ? 'Preparing…' : 'Download strip'}
+              {justSaved
+                ? isCustomer
+                  ? 'Saved'
+                  : 'Saved to your device'
+                : isExporting || isSavingToGallery
+                  ? isCustomer
+                    ? 'Saving…'
+                    : 'Preparing…'
+                  : isCustomer
+                    ? 'Save strip'
+                    : 'Download strip'}
             </button>
-            <div className={`edit-actions-split${isCustomer ? '' : ' is-single'}`}>
+            <div className="edit-actions-split is-single">
               <button
                 type="button"
                 className="edit-share edit-action-secondary edit-export-btn"
@@ -589,25 +582,10 @@ function EditPage() {
                 <IconPrint />
                 {isPrinting ? 'Preparing…' : 'Print'}
               </button>
-              {isCustomer && (
-                <button
-                  type="button"
-                  className="edit-share edit-action-secondary edit-export-btn"
-                  onClick={handleSaveToGallery}
-                  disabled={isBusy || capturedPhotos.length === 0}
-                >
-                  <IconGallery />
-                  {justSavedToGallery
-                    ? 'Saved to your account'
-                    : isSavingToGallery
-                      ? 'Saving…'
-                      : 'Save to account'}
-                </button>
-              )}
             </div>
             <p className="edit-actions-note">
               {isCustomer
-                ? 'Download stays on this device. Save to account keeps the strip in Photobothus.'
+                ? 'Saves a copy to this device and to your Photobothus account.'
                 : 'Your photos stay private on this device.'}
             </p>
           </div>

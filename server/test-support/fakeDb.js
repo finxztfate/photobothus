@@ -6,8 +6,8 @@
 const db = require('../src/db');
 
 function createFakeDb() {
-  const tables = { users: [], events: [], strips: [], picks: [], settings: new Map() };
-  const ids = { users: 0, events: 0, strips: 0, picks: 0 };
+  const tables = { users: [], events: [], strips: [], picks: [], likes: [], settings: new Map() };
+  const ids = { users: 0, events: 0, strips: 0, picks: 0, likes: 0 };
 
   const insert = (table, row) => {
     ids[table] += 1;
@@ -136,7 +136,7 @@ function createFakeDb() {
     // ---- strips
     [/^SELECT id, user_id, guest_key, event_id, title, image_url, layout_id, photo_urls, look_json, created_at FROM strips WHERE event_id = \? AND \(\? IS NULL OR id < \?\) ORDER BY id DESC LIMIT \?/, ([eventId, before, , limit]) =>
       [page(eventStrips(eventId), before, limit)]],
-    [/^SELECT id, user_id, event_id, title, image_url, spotlight_opt_in, spotlight_details, created_at FROM strips WHERE user_id = \? AND event_id IS NULL AND \(\? IS NULL OR id < \?\) ORDER BY id DESC LIMIT \?/, ([userId, before, , limit]) =>
+    [/^SELECT id, user_id, event_id, title, image_url, layout_id, spotlight_opt_in, spotlight_details, created_at FROM strips WHERE user_id = \? AND event_id IS NULL AND \(\? IS NULL OR id < \?\) ORDER BY id DESC LIMIT \?/, ([userId, before, , limit]) =>
       [page(tables.strips.filter((s) => s.user_id === userId && s.event_id == null), before, limit)]],
     [/^SELECT s\.id, s\.user_id, s\.event_id, s\.title, s\.image_url, s\.created_at, u\.email AS user_email, e\.name AS event_name, e\.code AS event_code FROM strips s LEFT JOIN users u ON u\.id = s\.user_id LEFT JOIN events e ON e\.id = s\.event_id WHERE \(\? IS NULL OR s\.id < \?\) ORDER BY s\.id DESC LIMIT \?/, ([before, , limit]) =>
       [page(tables.strips, before, limit).map((s) => {
@@ -226,11 +226,29 @@ function createFakeDb() {
       const before = tables.strips.length;
       tables.strips = tables.strips.filter((s) => s.id !== Number(id));
       tables.picks = tables.picks.filter((pick) => pick.strip_id !== Number(id));
+      tables.likes = tables.likes.filter((like) => like.strip_id !== Number(id));
       return [{ affectedRows: before - tables.strips.length }];
+    }],
+    [/^UPDATE strips SET spotlight_opt_in = 0, spotlight_week_start = NULL WHERE id = \?/, ([id]) => {
+      const strip = tables.strips.find((s) => s.id === Number(id));
+      if (strip) {
+        strip.spotlight_opt_in = 0;
+        strip.spotlight_week_start = null;
+      }
+      return [{ affectedRows: strip ? 1 : 0 }];
     }],
     [/^UPDATE strips SET spotlight_opt_in = \? WHERE id = \?/, ([flag, id]) => {
       const strip = tables.strips.find((s) => s.id === Number(id));
       if (strip) strip.spotlight_opt_in = flag;
+      return [{ affectedRows: strip ? 1 : 0 }];
+    }],
+    [/^UPDATE strips SET spotlight_opt_in = \?, spotlight_details = \?, spotlight_week_start = \? WHERE id = \?/, ([flag, details, weekStart, id]) => {
+      const strip = tables.strips.find((s) => s.id === Number(id));
+      if (strip) {
+        strip.spotlight_opt_in = flag;
+        strip.spotlight_details = details;
+        strip.spotlight_week_start = weekStart;
+      }
       return [{ affectedRows: strip ? 1 : 0 }];
     }],
     [/^UPDATE strips SET spotlight_opt_in = \?, spotlight_details = \? WHERE id = \?/, ([flag, details, id]) => {
@@ -241,11 +259,78 @@ function createFakeDb() {
       }
       return [{ affectedRows: strip ? 1 : 0 }];
     }],
+    [/^UPDATE strips SET spotlight_opt_in = 0, spotlight_week_start = NULL WHERE event_id IS NULL AND spotlight_opt_in = 1 AND \(spotlight_week_start IS NULL OR spotlight_week_start < \?\)/, ([weekKey]) => {
+      let affectedRows = 0;
+      tables.strips.forEach((strip) => {
+        if (strip.event_id != null || !strip.spotlight_opt_in) return;
+        if (strip.spotlight_week_start == null || String(strip.spotlight_week_start) < String(weekKey)) {
+          strip.spotlight_opt_in = 0;
+          strip.spotlight_week_start = null;
+          affectedRows += 1;
+        }
+      });
+      return [{ affectedRows }];
+    }],
     [/^DELETE FROM spotlight_picks WHERE strip_id = \?/, ([stripId]) => {
       const before = tables.picks.length;
       tables.picks = tables.picks.filter((pick) => pick.strip_id !== Number(stripId));
       return [{ affectedRows: before - tables.picks.length }];
     }],
+    [/^DELETE FROM spotlight_likes WHERE strip_id = \?$/, ([stripId]) => {
+      const before = tables.likes.length;
+      tables.likes = tables.likes.filter((like) => like.strip_id !== Number(stripId));
+      return [{ affectedRows: before - tables.likes.length }];
+    }],
+    [/^DELETE FROM spotlight_likes WHERE user_id = \? AND strip_id = \? AND week_start = \?/, ([userId, stripId, weekStart]) => {
+      const before = tables.likes.length;
+      tables.likes = tables.likes.filter(
+        (like) => !(like.user_id === Number(userId) && like.strip_id === Number(stripId) && String(like.week_start) === String(weekStart))
+      );
+      return [{ affectedRows: before - tables.likes.length }];
+    }],
+    [/^SELECT id FROM strips WHERE user_id = \? AND id <> \? AND event_id IS NULL AND spotlight_opt_in = 1 LIMIT 1/, ([userId, id]) =>
+      [tables.strips.filter((s) => s.user_id === Number(userId) && s.id !== Number(id) && s.event_id == null && s.spotlight_opt_in).slice(0, 1)]],
+    [/^SELECT id FROM strips WHERE user_id = \? AND id <> \? AND event_id IS NULL AND spotlight_opt_in = 1/, ([userId, id]) =>
+      [tables.strips.filter((s) => s.user_id === Number(userId) && s.id !== Number(id) && s.event_id == null && s.spotlight_opt_in)]],
+    [/^SELECT id FROM strips WHERE id = \? AND spotlight_opt_in = 1 AND event_id IS NULL AND user_id IS NOT NULL AND spotlight_week_start = \?/, ([id, weekStart]) =>
+      [tables.strips.filter((s) => s.id === Number(id) && s.spotlight_opt_in && s.event_id == null && s.user_id && String(s.spotlight_week_start) === String(weekStart))]],
+    [/^SELECT id FROM strips WHERE id = \? AND spotlight_opt_in = 1 AND event_id IS NULL AND user_id IS NOT NULL LIMIT 1/, ([id]) =>
+      [tables.strips.filter((s) => s.id === Number(id) && s.spotlight_opt_in && s.event_id == null && s.user_id)]],
+    [/^SELECT id FROM spotlight_likes WHERE user_id = \? AND strip_id = \? AND week_start = \?/, ([userId, stripId, weekStart]) =>
+      [tables.likes.filter((like) => like.user_id === Number(userId) && like.strip_id === Number(stripId) && String(like.week_start) === String(weekStart))]],
+    [/^INSERT INTO spotlight_likes \(user_id, strip_id, week_start\) VALUES \(\?, \?, \?\)/, ([user_id, strip_id, week_start]) => {
+      const dup = tables.likes.find(
+        (like) => like.user_id === Number(user_id) && like.strip_id === Number(strip_id) && String(like.week_start) === String(week_start)
+      );
+      if (dup) {
+        const err = new Error('Duplicate');
+        err.code = 'ER_DUP_ENTRY';
+        throw err;
+      }
+      return [{ insertId: insert('likes', { user_id, strip_id, week_start }).id }];
+    }],
+    [/^SELECT COUNT\(\*\) AS count FROM spotlight_likes WHERE strip_id = \? AND week_start = \?/, ([stripId, weekStart]) =>
+      [[{ count: tables.likes.filter((like) => like.strip_id === Number(stripId) && String(like.week_start) === String(weekStart)).length }]]],
+    [/^SELECT strip_id FROM spotlight_likes WHERE user_id = \? AND week_start = \?/, ([userId, weekStart]) =>
+      [tables.likes.filter((like) => like.user_id === Number(userId) && String(like.week_start) === String(weekStart))]],
+    [/^SELECT id, strip_id, created_at FROM spotlight_picks WHERE slot = 'week' ORDER BY id DESC LIMIT 1/, () =>
+      [[...tables.picks].filter((pick) => pick.slot === 'week').sort((a, b) => b.id - a.id).slice(0, 1)]],
+    [/^UPDATE spotlight_picks SET created_at = \? WHERE id = \?/, ([createdAt, id]) => {
+      const pick = tables.picks.find((row) => row.id === Number(id));
+      if (pick) pick.created_at = createdAt;
+      return [{ affectedRows: pick ? 1 : 0 }];
+    }],
+    [/^UPDATE spotlight_picks SET strip_id = \?, caption = NULL, created_at = \? WHERE id = \?/, ([stripId, createdAt, id]) => {
+      const pick = tables.picks.find((row) => row.id === Number(id));
+      if (pick) {
+        pick.strip_id = Number(stripId);
+        pick.caption = null;
+        pick.created_at = createdAt;
+      }
+      return [{ affectedRows: pick ? 1 : 0 }];
+    }],
+    [/^INSERT INTO spotlight_picks \(strip_id, slot, caption, created_at\) VALUES \(\?, \?, NULL, \?\)/, ([strip_id, slot, created_at]) =>
+      [{ insertId: insert('picks', { strip_id, slot, caption: null, created_at }).id }]],
     [/^DELETE FROM spotlight_picks WHERE slot = 'week' AND created_at <= DATE_SUB\(NOW\(\), INTERVAL 7 DAY\)/, () => {
       const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
       const before = tables.picks.length;
@@ -294,11 +379,11 @@ function createFakeDb() {
           const user = tables.users.find((u) => u.id === strip.user_id);
           return { ...pick, title: strip.title, display_name: user?.display_name ?? null };
         })]],
-    [/^SELECT p\.id AS pick_id, p\.slot, p\.caption, s\.id, s\.user_id, s\.title, s\.image_url, s\.spotlight_details, s\.created_at, u\.display_name FROM spotlight_picks p JOIN strips s ON s\.id = p\.strip_id JOIN users u ON u\.id = s\.user_id WHERE s\.spotlight_opt_in = 1 AND s\.event_id IS NULL AND s\.user_id IS NOT NULL ORDER BY p\.id ASC/, () =>
+    [/^SELECT p\.id AS pick_id, p\.slot, p\.caption, s\.id, s\.user_id, s\.title, s\.image_url, s\.layout_id, s\.photo_urls, s\.look_json, s\.spotlight_details, s\.created_at, u\.display_name FROM spotlight_picks p JOIN strips s ON s\.id = p\.strip_id JOIN users u ON u\.id = s\.user_id WHERE s\.event_id IS NULL AND s\.user_id IS NOT NULL AND \(p\.slot = 'week' OR s\.spotlight_opt_in = 1\) ORDER BY p\.id ASC/, () =>
       [tables.picks
         .filter((pick) => {
           const strip = tables.strips.find((s) => s.id === pick.strip_id);
-          return strip && strip.spotlight_opt_in && strip.event_id == null && strip.user_id;
+          return strip && strip.event_id == null && strip.user_id && (pick.slot === 'week' || strip.spotlight_opt_in);
         })
         .sort((a, b) => a.id - b.id)
         .map((pick) => {
@@ -312,11 +397,49 @@ function createFakeDb() {
             user_id: strip.user_id,
             title: strip.title,
             image_url: strip.image_url,
+            layout_id: strip.layout_id,
+            photo_urls: strip.photo_urls,
+            look_json: strip.look_json,
             spotlight_details: strip.spotlight_details,
             created_at: strip.created_at,
             display_name: user?.display_name ?? null,
           };
         })]],
+    [/^SELECT s\.id, s\.user_id, s\.title, s\.image_url, s\.layout_id, s\.photo_urls, s\.look_json, s\.spotlight_details, s\.created_at, u\.display_name, COUNT\(l\.id\) AS like_count FROM strips s JOIN users u ON u\.id = s\.user_id LEFT JOIN spotlight_likes l ON l\.strip_id = s\.id AND l\.week_start = \? WHERE s\.spotlight_opt_in = 1 AND s\.event_id IS NULL AND s\.user_id IS NOT NULL AND s\.spotlight_week_start = \? GROUP BY/, ([weekStart, entryWeek]) =>
+      [tables.strips
+        .filter((s) => s.spotlight_opt_in && s.event_id == null && s.user_id && String(s.spotlight_week_start) === String(entryWeek || weekStart))
+        .map((s) => {
+          const user = tables.users.find((u) => u.id === s.user_id);
+          const like_count = tables.likes.filter(
+            (like) => like.strip_id === s.id && String(like.week_start) === String(weekStart)
+          ).length;
+          return {
+            ...s,
+            display_name: user?.display_name ?? null,
+            like_count,
+          };
+        })
+        .sort((a, b) => b.like_count - a.like_count || b.id - a.id)]],
+    [/^SELECT l\.strip_id AS id, COUNT\(\*\) AS likes, MIN\(l\.created_at\) AS first_like FROM spotlight_likes l INNER JOIN strips s ON s\.id = l\.strip_id WHERE l\.week_start = \? AND s\.event_id IS NULL AND s\.user_id IS NOT NULL GROUP BY l\.strip_id ORDER BY likes DESC, first_like ASC, l\.strip_id ASC LIMIT 1/, ([weekStart]) => {
+      const groups = new Map();
+      tables.likes.forEach((like) => {
+        if (String(like.week_start) !== String(weekStart)) return;
+        const strip = tables.strips.find((s) => s.id === like.strip_id);
+        if (!strip || strip.event_id != null || !strip.user_id) return;
+        const cur = groups.get(like.strip_id) || { id: like.strip_id, likes: 0, first_like: like.created_at };
+        cur.likes += 1;
+        if (new Date(like.created_at) < new Date(cur.first_like)) cur.first_like = like.created_at;
+        groups.set(like.strip_id, cur);
+      });
+      const ranked = [...groups.values()].sort((a, b) => {
+        if (b.likes !== a.likes) return b.likes - a.likes;
+        const ta = new Date(a.first_like).getTime();
+        const tb = new Date(b.first_like).getTime();
+        if (ta !== tb) return ta - tb;
+        return a.id - b.id;
+      });
+      return [ranked.slice(0, 1)];
+    }],
   ];
 
   async function query(sql, params = []) {
@@ -340,8 +463,9 @@ function createFakeDb() {
       }),
     addStrip: (row) => insert('strips', {
       user_id: null, guest_key: null, event_id: null, title: null, image_url: 'missing.png',
-      layout_id: null, photo_urls: null, look_json: null, spotlight_opt_in: 0, spotlight_details: null, ...row,
+      layout_id: null, photo_urls: null, look_json: null, spotlight_opt_in: 0, spotlight_details: null, spotlight_week_start: null, ...row,
     }),
+    addLike: (row) => insert('likes', { created_at: new Date(), ...row }),
   };
 }
 

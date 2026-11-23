@@ -254,7 +254,7 @@ function Home() {
           Community <span className="cs-heading-accent">Spotlight</span>
         </h2>
         <p className="cs-subheading">
-          Strips customers allowed to be shown.
+          Staff picks on the home carousel. Community Photo of the Week lives on Spotlight.
         </p>
 
         <SpotlightCarousel items={spotlightItems} />

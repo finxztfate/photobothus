@@ -254,7 +254,7 @@ function AppNavbar({ theme, toggleTheme }) {
                             Event Dashboard
                           </Link>
                           <Link to="/gallery" role="menuitem" onClick={() => setProfileOpen(false)}>
-                            Account
+                            Gallery
                           </Link>
                         </>
                       )}

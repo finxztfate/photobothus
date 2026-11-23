@@ -5,6 +5,7 @@ const DEFAULTS = {
   max_event_uploads: '500',
   event_creation_enabled: '1',
   image_access_ttl_hours: '24',
+  spotlight_tz: 'Asia/Manila',
 };
 
 const MAX_EVENT_UPLOADS_CEILING = 10000;
@@ -91,6 +92,10 @@ async function getImageAccessTtlHours() {
   return Math.min(168, Math.floor(n));
 }
 
+async function getSpotlightTz() {
+  return (await getSetting('spotlight_tz')) || 'Asia/Manila';
+}
+
 async function setSettings(updates) {
   const allowed = Object.keys(DEFAULTS);
   for (const [key, value] of Object.entries(updates)) {
@@ -116,6 +121,7 @@ module.exports = {
   MAX_EVENT_UPLOADS_CEILING,
   isEventCreationEnabled,
   getImageAccessTtlHours,
+  getSpotlightTz,
   setSettings,
   invalidateSettingsCache,
 };

@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const eventsRoutes = require('./routes/events');
 const stripsRoutes = require('./routes/strips');
 const publicRoutes = require('./routes/public');
+const spotlightRoutes = require('./routes/spotlight');
 const adminRoutes = require('./routes/admin');
 const { uploadsDir } = require('./utils/upload');
 const { photoKey } = require('./utils/photoCipher');
@@ -68,6 +69,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/strips', stripsRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/spotlight', spotlightRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use('/api', (_req, res) => {

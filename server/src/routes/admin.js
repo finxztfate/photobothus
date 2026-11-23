@@ -14,7 +14,13 @@ const {
   ensureDefaults,
   MAX_EVENT_UPLOADS_CEILING,
 } = require('../utils/settings');
-const { HOME_LIMIT, expireWeekPick, weekEndsAt, weekIsCurrent } = require('../utils/spotlight');
+const {
+  HOME_LIMIT,
+  expireWeekPick,
+  weekEndsAt,
+  weekIsCurrent,
+  loadAdminStandings,
+} = require('../utils/spotlight');
 const bcrypt = require('bcryptjs');
 
 const router = express.Router();
@@ -659,6 +665,7 @@ router.post('/change-password', async (req, res) => {
 router.get('/spotlight', async (_req, res) => {
   try {
     await expireWeekPick();
+    const standings = await loadAdminStandings();
     const [eligible] = await pool.query(
       `SELECT s.id, s.title, s.image_url, s.created_at, u.display_name
        FROM strips s
@@ -688,6 +695,7 @@ router.get('/spotlight', async (_req, res) => {
     res.json({
       strips,
       picks: mappedPicks,
+      standings,
       weekLockedUntil: week ? weekEndsAt(week.createdAt).toISOString() : null,
     });
   } catch (err) {
@@ -725,7 +733,7 @@ router.post('/spotlight', async (req, res) => {
       );
       if (current.length && weekIsCurrent(current[0].created_at)) {
         return res.status(403).json({
-          error: 'Photo of the week stays up for 7 days. It can be changed after this week ends.',
+          error: 'Photo of the week stays until Sunday midnight. It can be changed after this week ends.',
         });
       }
       await pool.query("DELETE FROM spotlight_picks WHERE slot = 'week'");
@@ -767,7 +775,7 @@ router.delete('/spotlight/:id', async (req, res) => {
     }
     if (existing[0].slot === 'week' && weekIsCurrent(existing[0].created_at)) {
       return res.status(403).json({
-        error: 'Photo of the week stays up for 7 days. It can be changed after this week ends.',
+        error: 'Photo of the week stays until Sunday midnight. It can be changed after this week ends.',
       });
     }
     const [result] = await pool.query('DELETE FROM spotlight_picks WHERE id = ?', [req.params.id]);

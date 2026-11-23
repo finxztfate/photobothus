@@ -66,6 +66,18 @@ async function ensureSpotlightColumn(connection, database) {
     );
     console.log('Added spotlight details column');
   }
+
+  const [weekStart] = await connection.query(
+    `SELECT 1 FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'strips' AND COLUMN_NAME = 'spotlight_week_start' LIMIT 1`,
+    [database]
+  );
+  if (!weekStart.length) {
+    await connection.query(
+      'ALTER TABLE strips ADD COLUMN spotlight_week_start DATE DEFAULT NULL AFTER spotlight_details'
+    );
+    console.log('Added spotlight week start column');
+  }
 }
 
 async function ensureStripSessionColumns(connection, database) {
@@ -92,6 +104,19 @@ async function ensureStripSessionColumns(connection, database) {
   }
 }
 
+async function ensureSpotlightLikes(connection, database) {
+  const [tables] = await connection.query(
+    `SELECT 1 FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'spotlight_likes' LIMIT 1`,
+    [database]
+  );
+  if (!tables.length) {
+    const sql = fs.readFileSync(path.join(__dirname, '..', 'sql', 'migrate_spotlight_likes.sql'), 'utf8');
+    await connection.query(sql);
+    console.log('Added spotlight_likes table');
+  }
+}
+
 async function main() {
   const schema = fs
     .readFileSync(schemaPath, 'utf8')
@@ -107,6 +132,7 @@ async function main() {
     await ensureEventScheduleColumns(connection, config.database);
     await ensureSpotlightColumn(connection, config.database);
     await ensureStripSessionColumns(connection, config.database);
+    await ensureSpotlightLikes(connection, config.database);
 
     // Only replaces the public default, so a password changed later in admin settings is kept.
     if (process.env.ADMIN_PASSWORD) {
