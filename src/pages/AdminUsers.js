@@ -94,7 +94,7 @@ function AdminUsers() {
         <div>
           <h1>Customers</h1>
           <p>
-            Host accounts and ticket balances. Issue tickets from the form below after a confirmed sale or a recorded complimentary grant.
+            Host accounts and ticket balances. Issue tickets from the panel on the right after a confirmed sale or a recorded complimentary grant.
           </p>
         </div>
       </header>
@@ -109,7 +109,7 @@ function AdminUsers() {
               <p className="dash-muted">Adds to the host balance and writes a paid ledger line for audit.</p>
             </div>
           </div>
-          <form className="dash-form dash-issue-form" onSubmit={openConfirm}>
+          <form className="dash-form" onSubmit={openConfirm}>
             <label>
               Customer
               <select
@@ -125,6 +125,14 @@ function AdminUsers() {
                 ))}
               </select>
             </label>
+            {selected ? (
+              <p className="dash-muted">
+                Current balance: {selected.tickets ?? 0}. After this grant:{' '}
+                {Number.isInteger(ticketCount) && ticketCount > 0
+                  ? (selected.tickets ?? 0) + ticketCount
+                  : '—'}
+              </p>
+            ) : null}
             <label>
               Quantity
               <input
@@ -136,7 +144,19 @@ function AdminUsers() {
                 required
               />
             </label>
-            <label className="dash-issue-reason">
+            <div className="admin-pack-fill" role="group" aria-label="Sold pack sizes">
+              {PACKS.map((pack) => (
+                <button
+                  key={pack}
+                  type="button"
+                  className={Number(form.tickets) === pack ? 'is-active' : undefined}
+                  onClick={() => setForm((current) => ({ ...current, tickets: String(pack) }))}
+                >
+                  {pack}-ticket pack
+                </button>
+              ))}
+            </div>
+            <label>
               Reason
               <input
                 value={form.note}
@@ -146,31 +166,9 @@ function AdminUsers() {
                 required
               />
             </label>
-            <div className="dash-issue-submit">
-              <div className="admin-pack-fill" role="group" aria-label="Sold pack sizes">
-                {PACKS.map((pack) => (
-                  <button
-                    key={pack}
-                    type="button"
-                    className={Number(form.tickets) === pack ? 'is-active' : undefined}
-                    onClick={() => setForm((current) => ({ ...current, tickets: String(pack) }))}
-                  >
-                    {pack}
-                  </button>
-                ))}
-              </div>
-              <button type="submit" disabled={saving || !customers.length}>
-                {saving ? 'Issuing…' : 'Review and issue'}
-              </button>
-            </div>
-            {selected ? (
-              <p className="dash-muted dash-issue-balance">
-                Current balance: {selected.tickets ?? 0}. After this grant:{' '}
-                {Number.isInteger(ticketCount) && ticketCount > 0
-                  ? (selected.tickets ?? 0) + ticketCount
-                  : '—'}
-              </p>
-            ) : null}
+            <button type="submit" disabled={saving || !customers.length}>
+              {saving ? 'Issuing…' : 'Review and issue'}
+            </button>
           </form>
         </div>
 
@@ -178,7 +176,7 @@ function AdminUsers() {
           <div className="dash-panel-head">
             <div>
               <h2>Accounts</h2>
-              <p className="dash-muted">Every host on the system. Use Issue to fill the form above.</p>
+              <p className="dash-muted">Every host on the system. Use Issue to fill the form on the right.</p>
             </div>
           </div>
           <div className="dash-table-wrap">

@@ -28,14 +28,15 @@
 .admin-shell {
   min-height: 100vh;
   min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--admin-cream);
   color: var(--text-body);
   font-family: var(--font-body);
-  overflow-x: clip;
+  overflow: hidden;
   width: 100%;
-  padding-bottom: 72px;
+  padding-bottom: 0;
 }
 
 .admin-shell * {
@@ -125,9 +126,9 @@
   gap: 16px;
   padding: 18px 28px;
   color: var(--nav-text);
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 40;
+  flex-shrink: 0;
   border: none;
   background: var(--bg-header);
   box-shadow: none;
@@ -167,6 +168,7 @@
   grid-template-columns: 240px minmax(0, 1fr);
   align-items: stretch;
   min-height: 0;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -181,10 +183,11 @@
   border-right: 1px solid rgba(255, 237, 211, 0.12);
   box-shadow: none;
   border-radius: 0;
-  position: sticky;
-  top: 0;
+  position: relative;
   align-self: stretch;
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .admin-aside-label {
@@ -200,7 +203,10 @@
 .admin-aside-nav {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .admin-aside-nav a {
@@ -232,7 +238,10 @@
 }
 
 .admin-aside-user {
-  margin: auto 8px 0;
+  margin-top: auto;
+  margin-right: 8px;
+  margin-left: 8px;
+  flex-shrink: 0;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 237, 211, 0.12);
   font-size: 0.78rem;
@@ -241,13 +250,16 @@
 }
 
 .admin-main {
-  flex: 1;
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 36px 40px 80px;
-  padding-bottom: max(80px, env(safe-area-inset-bottom));
+  max-width: none;
+  margin: 0;
+  justify-self: stretch;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: 28px 32px 80px;
+  padding-bottom: max(80px, env(safe-area-inset-bottom));
 }
 
 .admin-footer {
@@ -747,37 +759,22 @@
 }
 
 .dash-customers {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-areas: "accounts issue";
+  align-items: start;
   gap: 18px;
   min-width: 0;
 }
 
-.dash-issue-form {
-  display: grid;
-  grid-template-columns: minmax(14rem, 1.6fr) 7.5rem minmax(12rem, 1.4fr) auto;
-  align-items: end;
-  gap: 12px 14px;
+.dash-issue-panel {
+  grid-area: issue;
+  position: sticky;
+  top: 16px;
 }
 
-.dash-issue-reason {
-  min-width: 0;
-}
-
-.dash-issue-submit {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 11rem;
-}
-
-.dash-issue-submit .admin-pack-fill {
-  width: 100%;
-}
-
-.dash-issue-balance {
-  grid-column: 1 / -1;
-  margin: 0;
+.dash-customers .dash-panel-table {
+  grid-area: accounts;
 }
 
 .dash-accounts-table {
@@ -1029,10 +1026,10 @@
 
 @media (min-width: 769px) {
   .admin-aside {
-    position: sticky;
+    position: relative;
     transform: none;
     width: auto;
-    overflow-y: visible;
+    overflow: hidden;
   }
 
   .admin-nav-overlay {
@@ -1060,9 +1057,17 @@
     letter-spacing: 0.06em;
   }
 
+  .admin-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: clip;
+    overflow-y: auto;
+  }
+
   .admin-body {
     display: block;
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .admin-aside {
@@ -1119,6 +1124,8 @@
     padding: 14px 16px 20px;
     padding-bottom: max(20px, env(safe-area-inset-bottom));
     width: 100%;
+    height: auto;
+    overflow: visible;
   }
 
   .admin-footer {
@@ -1225,12 +1232,15 @@
     grid-template-columns: 1fr;
   }
 
-  .dash-issue-form {
+  .dash-customers {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "issue"
+      "accounts";
   }
 
-  .dash-issue-submit {
-    min-width: 0;
+  .dash-issue-panel {
+    position: static;
   }
 
   .dash-accounts-table {
