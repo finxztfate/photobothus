@@ -27,6 +27,7 @@ function AdminPayments() {
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [customers, setCustomers] = useState([]);
   const [form, setForm] = useState({
     amount: '',
     type: 'event_hosting',
@@ -45,7 +46,11 @@ function AdminPayments() {
     let cancelled = false;
     (async () => {
       try {
-        await loadPayments();
+        const [usersData] = await Promise.all([
+          apiRequest('/api/admin/users'),
+          loadPayments(),
+        ]);
+        if (!cancelled) setCustomers(usersData.users || []);
       } catch (err) {
         if (!cancelled) setError(err.message);
       }
@@ -221,23 +226,28 @@ function AdminPayments() {
             </div>
             <div className="dash-form-row">
               <label>
-                Customer ID
-                <input
-                  type="number"
-                  min="1"
+                Customer
+                <select
                   value={form.userId}
                   onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
-                  placeholder="User id"
-                />
+                >
+                  <option value="">No host (ledger only)</option>
+                  {customers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {(user.displayName ? `${user.displayName} · ` : '') + user.email}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
-                Tickets to grant
+                Tickets to issue
                 <input
                   type="number"
-                  min="1"
+                  min="0"
+                  max="99"
                   value={form.tickets}
                   onChange={(e) => setForm((f) => ({ ...f, tickets: e.target.value }))}
-                  placeholder="1"
+                  placeholder="0"
                 />
               </label>
             </div>

@@ -315,10 +315,36 @@
   margin: 0 0 16px;
 }
 
-.admin-grant {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.dash-row-selected td {
+  color: var(--text-heading);
+  background: rgba(232, 163, 61, 0.08);
+}
+
+.admin-pack-fill {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-pack-fill button {
+  margin: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: 0;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--admin-muted);
+  font-family: var(--font-subheading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-pack-fill button.is-active,
+.admin-pack-fill button:hover {
+  border-color: var(--accent);
+  color: var(--text-heading);
 }
 
 .admin-action-btn {
@@ -896,6 +922,30 @@
 .dash-form button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.dash-form .admin-pack-fill button {
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: 0;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--admin-muted);
+  font-family: var(--font-subheading);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: none;
+}
+
+.dash-form .admin-pack-fill button.is-active,
+.dash-form .admin-pack-fill button:hover {
+  border-color: var(--accent);
+  color: var(--text-heading);
+  filter: none;
 }
 
 .admin-shell .dash-welcome,

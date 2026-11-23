@@ -51,7 +51,7 @@ test('admin can grant a purchased ticket pack', async () => {
 
   const granted = await app.api('POST', '/api/admin/tickets', {
     as: admin,
-    body: { userId: broke.id, tickets: 5 },
+    body: { userId: broke.id, tickets: 5, note: 'Paid 5-ticket pack' },
   });
   assert.equal(granted.status, 201);
   assert.equal(granted.body.tickets, 5);

@@ -507,10 +507,31 @@ router.post('/tickets', async (req, res) => {
   try {
     const userId = Number(req.body.userId);
     const tickets = Number(req.body.tickets);
+    const note = String(req.body.note || '').trim().slice(0, 255);
     if (!Number.isInteger(userId) || userId < 1) {
       return res.status(400).json({ error: 'A customer is required' });
     }
+    const [users] = await pool.query(
+      'SELECT id, email, display_name, avatar_url, role, created_at FROM users WHERE id = ?',
+      [userId]
+    );
+    if (!users[0] || users[0].role !== 'customer') {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
     const account = await addTickets(userId, tickets);
+    await pool.query(
+      `INSERT INTO payments (user_id, event_id, amount, currency, type, status, note)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        null,
+        0,
+        'PHP',
+        'event_hosting',
+        'paid',
+        note || `Granted ${tickets} event ticket${tickets === 1 ? '' : 's'}`,
+      ]
+    );
     res.status(201).json({ userId, ...account });
   } catch (err) {
     if (err.status) {
