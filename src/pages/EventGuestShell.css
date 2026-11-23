@@ -127,8 +127,23 @@
   min-height: 0;
 }
 
+.event-guest-shell.is-compact {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
 .event-guest-shell.is-compact .event-guest-main {
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-guest-shell.is-compact .page-event-photobooth-wrapper {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  max-height: none;
 }
 
 /* On larger screens, keep guest shell readable but still phone-oriented */

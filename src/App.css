@@ -206,9 +206,11 @@ body {
 }
 
 .page-photobooth-wrapper .photobooth-page,
-.page-photobooth-wrapper .event-mobile-booth {
+.page-photobooth-wrapper .event-mobile-booth,
+.page-event-photobooth-wrapper .event-mobile-booth {
   flex: 1;
   min-height: 0;
+  height: auto;
   overflow: hidden;
 }
 
@@ -217,9 +219,12 @@ body {
 }
 
 .page-event-photobooth-wrapper {
-  min-height: calc(100vh - 52px);
-  min-height: calc(100dvh - 52px);
-  background: #121218;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #0c0a09;
 }
 
 .page-spotlight,
