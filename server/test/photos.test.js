@@ -122,20 +122,18 @@ test('an admin cannot list or delete customer strips', async () => {
   assert.ok(app.db.tables.strips.some((row) => row.id === strip.id));
 });
 
-test('a guest is stopped after 4 uploads to the same event', async () => {
+test('a guest is stopped after 2 uploads to the same event', async () => {
   const event = app.db.addEvent({ owner_id: host.id, name: 'Guest cap' });
-  const key = 'guest-fourlimitxx';
+  const key = 'guest-twolimitxxx';
   assert.equal((await app.guestUpload(event.code, key)).status, 201);
-  assert.equal((await app.guestUpload(event.code, key)).status, 201);
-  assert.equal((await app.guestUpload(event.code, key)).status, 201);
-  const fourth = await app.guestUpload(event.code, key);
-  assert.equal(fourth.status, 201);
-  assert.equal(fourth.body.uploadsRemaining, 0);
-  assert.equal(fourth.body.maxGuestUploads, 4);
+  const second = await app.guestUpload(event.code, key);
+  assert.equal(second.status, 201);
+  assert.equal(second.body.uploadsRemaining, 0);
+  assert.equal(second.body.maxGuestUploads, 2);
 
   const refused = await app.guestUpload(event.code, key);
   assert.equal(refused.status, 403);
-  assert.match(refused.body.error, /4 photos/);
+  assert.match(refused.body.error, /2 photos/);
 });
 
 // ---- per-event photo cap
@@ -163,7 +161,7 @@ test('an event stops accepting photos at the event limit, whatever guest key is 
   await app.api('DELETE', `/api/events/${event.id}/strips/${first.id}`, { as: host });
   assert.equal((await app.guestUpload(event.code, 'guest-dddddddd')).status, 201);
 
-  await app.api('PATCH', '/api/admin/settings', { as: admin, body: { maxEventUploads: 500 } });
+  await app.api('PATCH', '/api/admin/settings', { as: admin, body: { maxEventUploads: 30 } });
 });
 
 test('the event limit must be a sensible number', async () => {

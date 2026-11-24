@@ -23,10 +23,31 @@ function getDbConfig() {
   };
 }
 
+function readPositiveInt(value, fallback) {
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
+// Bound the pool so a traffic spike fails with a fast error instead of
+// waiting forever for a free connection (which looks like a hang).
 const pool = mysql.createPool({
   ...getDbConfig(),
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: readPositiveInt(process.env.DB_POOL_SIZE, 10),
+  queueLimit: readPositiveInt(process.env.DB_QUEUE_LIMIT, 50),
+  connectTimeout: readPositiveInt(process.env.DB_CONNECT_TIMEOUT_MS, 10_000),
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 });
 
-module.exports = { pool, getDbConfig };
+function isPoolBusyError(err) {
+  if (!err) return false;
+  const message = String(err.message || '');
+  return (
+    err.code === 'ER_CON_COUNT_ERROR' ||
+    /queue limit reached/i.test(message) ||
+    /no connections available/i.test(message)
+  );
+}
+
+module.exports = { pool, getDbConfig, isPoolBusyError };

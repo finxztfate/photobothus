@@ -2,6 +2,7 @@ const express = require('express');
 const yazl = require('yazl');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { rateLimit } = require('../middleware/rateLimit');
 const {
   generateEventCode,
   readStoredPhoto,
@@ -19,12 +20,29 @@ const {
   storedKeysForStrip,
 } = require('../utils/stripHelpers');
 const { lookJsonFromBody, applyLookToEvent, saveStripLook } = require('../utils/stripLook');
-const { closeExpiredEventsQuietly, readInstant, toDateOnly } = require('../utils/eventSchedule');
+const {
+  closeExpiredEventsQuietly,
+  readInstant,
+  toDateOnly,
+  findOverlappingEvent,
+} = require('../utils/eventSchedule');
 const { readPage, pageOf } = require('../utils/pagination');
-const { isEventCreationEnabled } = require('../utils/settings');
+const { isEventCreationEnabled, getMaxEventUploads } = require('../utils/settings');
 const { getTicketAccount, spendEventTicket, addTickets } = require('../utils/tickets');
+const {
+  parseAllowedLayouts,
+  serializeAllowedLayouts,
+  readAllowedLayouts,
+  estimateEventStripLimit,
+} = require('../utils/eventLayouts');
 
 const router = express.Router();
+
+const hostUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.HOST_UPLOAD_RATE_MAX || 80),
+  message: 'Too many uploads. Please wait a few minutes and try again.',
+});
 
 /** A name that is safe inside a ZIP and in a download header: letters, digits, "_", "." and "-". */
 function safeFileName(value, fallback) {
@@ -47,7 +65,9 @@ function sendEventError(res, err, message) {
   }
   console.error(err);
   if (err.code === 'ER_BAD_FIELD_ERROR') {
-    return res.status(500).json({ error: `${message}. Did you run migrate_event_schedule.sql?` });
+    return res.status(500).json({
+      error: `${message}. Did you run migrate_event_schedule.sql / migrate_event_allowed_layouts.sql?`,
+    });
   }
   return res.status(500).json({ error: message });
 }
@@ -62,8 +82,12 @@ function normalizeHashtags(value) {
   return tags.length ? tags.join(' ') : null;
 }
 
-function mapEvent(row) {
+function mapEvent(row, { adminMaxEventUploads } = {}) {
   const isActive = !!row.is_active;
+  const allowedLayouts = parseAllowedLayouts(row.allowed_layouts);
+  const adminMax = adminMaxEventUploads != null ? Number(adminMaxEventUploads) : null;
+  const suggestedMaxEventUploads =
+    adminMax != null ? estimateEventStripLimit(adminMax, allowedLayouts) : undefined;
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -76,6 +100,8 @@ function mapEvent(row) {
     welcomeMessage: row.welcome_message || null,
     hashtags: row.hashtags || null,
     stripsEnabled: row.strips_enabled == null ? false : !!row.strips_enabled,
+    allowedLayouts,
+    suggestedMaxEventUploads,
     code: row.code,
     isActive,
     status: isActive ? 'active' : 'completed',
@@ -84,6 +110,11 @@ function mapEvent(row) {
     stripCount: row.strip_count != null ? Number(row.strip_count) : undefined,
     guestCount: row.guest_count != null ? Number(row.guest_count) : undefined,
   };
+}
+
+async function mapEventRow(row) {
+  const adminMaxEventUploads = await getMaxEventUploads();
+  return mapEvent(row, { adminMaxEventUploads });
 }
 
 function readEventFields(body, fallback = {}) {
@@ -116,6 +147,7 @@ function readEventFields(body, fallback = {}) {
       : fallback.strips_enabled != null
         ? fallback.strips_enabled
         : 0;
+  const allowedLayouts = readAllowedLayouts(body, fallback.allowed_layouts);
 
   return {
     name,
@@ -127,6 +159,7 @@ function readEventFields(body, fallback = {}) {
     welcomeMessage,
     hashtags,
     stripsEnabled,
+    allowedLayouts,
   };
 }
 
@@ -162,9 +195,11 @@ router.get('/', async (req, res) => {
     );
     const canCreate = await isEventCreationEnabled();
     const tickets = await getTicketAccount(req.user.id);
+    const adminMaxEventUploads = await getMaxEventUploads();
     res.json({
-      events: rows.map(mapEvent),
+      events: rows.map((row) => mapEvent(row, { adminMaxEventUploads })),
       canCreate,
+      maxEventUploads: adminMaxEventUploads,
       ...tickets,
     });
   } catch (err) {
@@ -186,6 +221,15 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'Event creation is turned off.' });
     }
 
+    const overlap = await findOverlappingEvent(req.user.id, fields.startsAt, fields.endsAt);
+    if (overlap) {
+      return res.status(409).json({
+        error: `You already have an event scheduled then (“${overlap.name}”). Pick a different time.`,
+        code: 'EVENT_SCHEDULE_OVERLAP',
+        conflictingEventId: overlap.id,
+      });
+    }
+
     spentTicket = await spendEventTicket(req.user.id);
     if (!spentTicket) {
       return res.status(402).json({
@@ -200,8 +244,8 @@ router.post('/', async (req, res) => {
         const [result] = await pool.query(
           `INSERT INTO events
             (owner_id, name, host_name, event_date, starts_at, ends_at, location,
-             welcome_message, hashtags, strips_enabled, code)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             welcome_message, hashtags, strips_enabled, allowed_layouts, code)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             req.user.id,
             fields.name,
@@ -213,11 +257,14 @@ router.post('/', async (req, res) => {
             fields.welcomeMessage,
             fields.hashtags,
             fields.stripsEnabled,
+            serializeAllowedLayouts(fields.allowedLayouts),
             code,
           ]
         );
         const [rows] = await pool.query('SELECT * FROM events WHERE id = ?', [result.insertId]);
-        return res.status(201).json({ event: mapEvent({ ...rows[0], strip_count: 0 }) });
+        return res.status(201).json({
+          event: await mapEventRow({ ...rows[0], strip_count: 0 }),
+        });
       } catch (err) {
         if (err.code === 'ER_DUP_ENTRY') {
           code = generateEventCode();
@@ -252,7 +299,7 @@ router.get('/:id', async (req, res) => {
     if (!rows.length) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    res.json({ event: mapEvent(rows[0]) });
+    res.json({ event: await mapEventRow(rows[0]) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load event' });
@@ -260,6 +307,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Download All: every photo of the event in one ZIP, streamed straight from disk.
+// Photos are decrypted and added one at a time so a large gallery cannot OOM the process.
 router.get('/:id/download', async (req, res) => {
   try {
     const [events] = await pool.query(
@@ -277,13 +325,20 @@ router.get('/:id/download', async (req, res) => {
       'SELECT id, title, image_url FROM strips WHERE event_id = ? ORDER BY id ASC',
       [events[0].id]
     );
-    // One laid-out strip per guest session (preview already has layout + saved look).
-    const files = [];
-    rows.forEach((row) => {
-      const preview = readStoredPhoto(row.image_url);
-      if (preview) files.push({ row, photo: preview });
-    });
-    if (!files.length) {
+
+    // Decrypt the first readable strip before opening the ZIP response so a
+    // missing gallery still returns a clean JSON 404 (not a broken archive).
+    let startAt = -1;
+    let firstPhoto = null;
+    for (let i = 0; i < rows.length; i += 1) {
+      // One laid-out strip per guest session (preview already has layout + saved look).
+      firstPhoto = await readStoredPhoto(rows[i].image_url);
+      if (firstPhoto) {
+        startAt = i;
+        break;
+      }
+    }
+    if (startAt < 0) {
       return res.status(404).json({ error: 'No photos to download' });
     }
 
@@ -292,12 +347,6 @@ router.get('/:id/download', async (req, res) => {
       console.error(err);
       res.destroy(err);
     });
-    files.forEach(({ row, photo }, index) => {
-      const number = String(index + 1).padStart(3, '0');
-      const name = `${number}-${safeFileName(row.title, 'strip')}${extensionForMime(photo.mime)}`;
-      // Images are already compressed, so they are stored as they are.
-      zip.addBuffer(photo.buffer, name, { compress: false });
-    });
 
     res.set('Content-Type', 'application/zip');
     res.set(
@@ -305,6 +354,22 @@ router.get('/:id/download', async (req, res) => {
       `attachment; filename="${safeFileName(events[0].name, 'event')}-photos.zip"`
     );
     zip.outputStream.pipe(res);
+
+    let added = 0;
+    const addPhoto = (row, photo) => {
+      added += 1;
+      const number = String(added).padStart(3, '0');
+      const name = `${number}-${safeFileName(row.title, 'strip')}${extensionForMime(photo.mime)}`;
+      // Images are already compressed, so they are stored as they are.
+      zip.addBuffer(photo.buffer, name, { compress: false });
+    };
+
+    addPhoto(rows[startAt], firstPhoto);
+    for (let i = startAt + 1; i < rows.length; i += 1) {
+      const photo = await readStoredPhoto(rows[i].image_url);
+      if (photo) addPhoto(rows[i], photo);
+    }
+
     zip.end();
   } catch (err) {
     console.error(err);
@@ -373,7 +438,7 @@ router.get('/:id/strips/:stripId', async (req, res) => {
   }
 });
 
-router.patch('/:id/strips/:stripId', upload.single('image'), async (req, res) => {
+router.patch('/:id/strips/:stripId', hostUploadLimiter, upload.single('image'), async (req, res) => {
   let committed = false;
   let newImageKey = null;
   try {
@@ -401,7 +466,7 @@ router.patch('/:id/strips/:stripId', upload.single('image'), async (req, res) =>
       return res.status(400).json({ error: 'Nothing to update' });
     }
     if (req.file) {
-      newImageKey = prepareUploadedImage(req.file);
+      newImageKey = await prepareUploadedImage(req.file);
     }
 
     await saveStripLook(pool, {
@@ -415,7 +480,7 @@ router.patch('/:id/strips/:stripId', upload.single('image'), async (req, res) =>
 
     if (newImageKey && rows[0].image_url && rows[0].image_url !== newImageKey) {
       const keep = new Set(storedKeysForStrip({ ...rows[0], image_url: newImageKey }));
-      if (!keep.has(rows[0].image_url)) removeStoredFile(rows[0].image_url);
+      if (!keep.has(rows[0].image_url)) await removeStoredFile(rows[0].image_url);
     }
 
     const [updated] = await pool.query('SELECT * FROM strips WHERE id = ?', [rows[0].id]);
@@ -423,11 +488,13 @@ router.patch('/:id/strips/:stripId', upload.single('image'), async (req, res) =>
   } catch (err) {
     const status = err.status || 500;
     if (status >= 500) console.error(err);
-    res.status(status).json({ error: status === 400 ? err.message : 'Failed to update strip' });
+    const message =
+      status === 400 || status === 503 ? err.message : 'Failed to update strip';
+    res.status(status).json({ error: message });
   } finally {
     if (!committed) {
-      discardUploadedFile(req.file);
-      if (newImageKey) removeStoredFile(newImageKey);
+      await discardUploadedFile(req.file);
+      if (newImageKey) await removeStoredFile(newImageKey);
     }
   }
 });
@@ -466,10 +533,24 @@ router.patch('/:id', async (req, res) => {
       });
     }
 
+    if (isActive && fields.startsAt && fields.endsAt) {
+      const overlap = await findOverlappingEvent(req.user.id, fields.startsAt, fields.endsAt, {
+        excludeEventId: Number(req.params.id),
+      });
+      if (overlap) {
+        return res.status(409).json({
+          error: `You already have an event scheduled then (“${overlap.name}”). Pick a different time.`,
+          code: 'EVENT_SCHEDULE_OVERLAP',
+          conflictingEventId: overlap.id,
+        });
+      }
+    }
+
     await pool.query(
       `UPDATE events
        SET name = ?, host_name = ?, event_date = ?, starts_at = ?, ends_at = ?, location = ?,
-           welcome_message = ?, hashtags = ?, strips_enabled = ?, is_active = ?, completed_at = ?
+           welcome_message = ?, hashtags = ?, strips_enabled = ?, allowed_layouts = ?,
+           is_active = ?, completed_at = ?
        WHERE id = ?`,
       [
         fields.name,
@@ -481,6 +562,7 @@ router.patch('/:id', async (req, res) => {
         fields.welcomeMessage,
         fields.hashtags,
         fields.stripsEnabled,
+        serializeAllowedLayouts(fields.allowedLayouts),
         isActive,
         completedAt,
         req.params.id,
@@ -496,7 +578,7 @@ router.patch('/:id', async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ event: mapEvent(rows[0]) });
+    res.json({ event: await mapEventRow(rows[0]) });
   } catch (err) {
     sendEventError(res, err, 'Failed to update event');
   }

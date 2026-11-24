@@ -63,6 +63,12 @@ function createFakeDb() {
       [{ insertId: insert('payments', { user_id, event_id, amount, currency, type, status, note }).id }]],
     [/^SELECT \* FROM payments WHERE id = \?/, ([id]) =>
       [tables.payments.filter((p) => p.id === Number(id))]],
+    [/^UPDATE payments SET status = 'paid' WHERE id = \? AND status = 'pending'/, ([id]) => {
+      const row = tables.payments.find((p) => p.id === Number(id) && p.status === 'pending');
+      if (!row) return [{ affectedRows: 0 }];
+      row.status = 'paid';
+      return [{ affectedRows: 1 }];
+    }],
     [/^SELECT id, email, display_name, role, event_tickets, potw_wins, created_at FROM users WHERE role = 'customer'/, () =>
       [tables.users.filter((u) => u.role === 'customer')]],
     [/^SELECT id, email, display_name, avatar_url, role, created_at FROM users WHERE id = \?/, ([id]) =>
@@ -127,19 +133,19 @@ function createFakeDb() {
       });
       return [{ affectedRows }];
     }],
-    [/^INSERT INTO events \(owner_id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, code\)/, (p) => {
-      const [owner_id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, code] = p;
+    [/^INSERT INTO events \(owner_id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, allowed_layouts, code\)/, (p) => {
+      const [owner_id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, allowed_layouts, code] = p;
       const row = insert('events', {
         owner_id, name, host_name, event_date, starts_at, ends_at, location, welcome_message,
-        hashtags, strips_enabled, code, is_active: 1, completed_at: null,
+        hashtags, strips_enabled, allowed_layouts, code, is_active: 1, completed_at: null,
       });
       return [{ insertId: row.id }];
     }],
-    [/^UPDATE events SET name = \?, host_name = \?, event_date = \?, starts_at = \?, ends_at = \?, location = \?, welcome_message = \?, hashtags = \?, strips_enabled = \?, is_active = \?, completed_at = \? WHERE id = \?/, (p) => {
-      const [name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, is_active, completed_at, id] = p;
+    [/^UPDATE events SET name = \?, host_name = \?, event_date = \?, starts_at = \?, ends_at = \?, location = \?, welcome_message = \?, hashtags = \?, strips_enabled = \?, allowed_layouts = \?, is_active = \?, completed_at = \? WHERE id = \?/, (p) => {
+      const [name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, allowed_layouts, is_active, completed_at, id] = p;
       Object.assign(tables.events.find((e) => e.id === Number(id)), {
         name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags,
-        strips_enabled, is_active, completed_at,
+        strips_enabled, allowed_layouts, is_active, completed_at,
       });
       return [{ affectedRows: 1 }];
     }],
@@ -155,9 +161,21 @@ function createFakeDb() {
     [/^SELECT id(?:, name)?(?:, is_active)? FROM events WHERE id = \? AND owner_id = \?/, ([id, ownerId]) =>
       [tables.events.filter((e) => e.id === Number(id) && e.owner_id === ownerId)]],
     [/^SELECT owner_id(?:, is_active)? FROM events WHERE id = \?/, ([id]) => [tables.events.filter((e) => e.id === Number(id))]],
-    [/^SELECT id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, code, is_active, created_at FROM events WHERE code = \?/, ([code]) =>
+    [/^SELECT id, name, host_name, event_date, starts_at, ends_at, location, welcome_message, hashtags, strips_enabled, allowed_layouts, code, is_active, created_at FROM events WHERE code = \?/, ([code]) =>
+      [tables.events.filter((e) => e.code === code)]],
+    [/^SELECT id, is_active, allowed_layouts FROM events WHERE code = \?/, ([code]) =>
       [tables.events.filter((e) => e.code === code)]],
     [/^SELECT id, is_active FROM events WHERE code = \?/, ([code]) => [tables.events.filter((e) => e.code === code)]],
+    [/^SELECT id, name, starts_at, ends_at FROM events WHERE owner_id = \? AND is_active = 1 AND starts_at IS NOT NULL AND ends_at IS NOT NULL AND \(\? IS NULL OR id <> \?\) AND starts_at < \? AND ends_at > \?/, ([ownerId, excludeId, , endsAt, startsAt]) => {
+      const rows = tables.events.filter((event) => {
+        if (event.owner_id !== ownerId || event.is_active !== 1) return false;
+        if (!event.starts_at || !event.ends_at) return false;
+        if (excludeId != null && event.id === Number(excludeId)) return false;
+        return event.starts_at < endsAt && event.ends_at > startsAt;
+      });
+      rows.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+      return [rows.slice(0, 1)];
+    }],
     [/^DELETE FROM events WHERE id = \?/, ([id]) => {
       const before = tables.events.length;
       tables.events = tables.events.filter((e) => e.id !== Number(id));
@@ -493,7 +511,8 @@ function createFakeDb() {
     addEvent: (row) =>
       insert('events', {
         host_name: null, event_date: null, starts_at: null, ends_at: null, location: null,
-        welcome_message: null, hashtags: null, strips_enabled: 0, is_active: 1, completed_at: null,
+        welcome_message: null, hashtags: null, strips_enabled: 0, allowed_layouts: null,
+        is_active: 1, completed_at: null,
         code: `code${ids.events + 1}`, ...row,
       }),
     addStrip: (row) => insert('strips', {

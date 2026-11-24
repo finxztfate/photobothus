@@ -87,7 +87,14 @@ test('admin can turn event creation off', async () => {
   });
   assert.equal(on.body.settings.eventCreationEnabled, true);
   assert.equal(
-    (await app.api('POST', '/api/events', { as: user, body: eventDetails({ name: 'Second' }) })).status,
+    (await app.api('POST', '/api/events', {
+      as: user,
+      body: eventDetails({
+        name: 'Second',
+        startsAt: inMinutes(200),
+        endsAt: inMinutes(320),
+      }),
+    })).status,
     201
   );
 });
@@ -97,6 +104,46 @@ test('impossible schedules are rejected', async () => {
   assert.equal((await create({ startsAt: inMinutes(60), endsAt: inMinutes(30) })).status, 400);
   assert.equal((await create({ endsAt: inMinutes(-5) })).status, 400);
   assert.equal((await create({ endsAt: 'tomorrow-ish' })).status, 400);
+});
+
+test('a host cannot create two live events that overlap in time', async () => {
+  const owner = extraHost();
+  const startsAt = inMinutes(120);
+  const endsAt = inMinutes(240);
+  const first = await app.api('POST', '/api/events', {
+    as: owner,
+    body: eventDetails({ name: 'First booking', startsAt, endsAt }),
+  });
+  assert.equal(first.status, 201);
+
+  const blocked = await app.api('POST', '/api/events', {
+    as: owner,
+    body: eventDetails({
+      name: 'Clash',
+      startsAt: inMinutes(180),
+      endsAt: inMinutes(300),
+    }),
+  });
+  assert.equal(blocked.status, 409);
+  assert.equal(blocked.body.code, 'EVENT_SCHEDULE_OVERLAP');
+  assert.match(blocked.body.error, /First booking/);
+
+  const backToBack = await app.api('POST', '/api/events', {
+    as: owner,
+    body: eventDetails({
+      name: 'Next slot',
+      startsAt: endsAt,
+      endsAt: inMinutes(360),
+    }),
+  });
+  assert.equal(backToBack.status, 201);
+
+  const other = extraHost();
+  const sameTimeOtherHost = await app.api('POST', '/api/events', {
+    as: other,
+    body: eventDetails({ name: 'Other host ok', startsAt, endsAt }),
+  });
+  assert.equal(sameTimeOtherHost.status, 201);
 });
 
 test('a DATE column is sent as the calendar day, not a shifted timestamp', async () => {

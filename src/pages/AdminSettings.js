@@ -13,8 +13,8 @@ function AdminSettings() {
   const [savingSystem, setSavingSystem] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [system, setSystem] = useState({
-    maxGuestUploads: 4,
-    maxEventUploads: 500,
+    maxGuestUploads: 2,
+    maxEventUploads: 30,
     eventCreationEnabled: true,
     imageAccessTtlHours: 24,
   });

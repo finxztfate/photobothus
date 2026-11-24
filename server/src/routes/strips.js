@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../db');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { rateLimit } = require('../middleware/rateLimit');
 const { upload, prepareUploadedImage, discardUploadedFile, readStoredPhoto } = require('../utils/upload');
 const { verifyStripImageAccess } = require('../utils/imageAccess');
 const {
@@ -15,6 +16,12 @@ const { readSpotlightDetails, parseSpotlightDetails } = require('../utils/spotli
 const { weekStartKey, getSpotlightTz } = require('../utils/spotlight');
 
 const router = express.Router();
+
+const stripUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.STRIP_UPLOAD_RATE_MAX || 60),
+  message: 'Too many uploads. Please wait a few minutes and try again.',
+});
 
 function normalizeGuestKey(value) {
   const key = String(value || '').trim();
@@ -50,7 +57,7 @@ router.get('/:id/image', optionalAuth, async (req, res) => {
       slot != null && Number.isInteger(slot) && slot >= 0 && slot < cellKeys.length
         ? cellKeys[slot]
         : strip.image_url;
-    const photo = readStoredPhoto(stored);
+    const photo = await readStoredPhoto(stored);
     if (!photo) {
       return res.status(404).json({ error: 'Image file not found' });
     }
@@ -125,7 +132,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', stripUploadLimiter, upload.single('image'), async (req, res) => {
   let committed = false;
   try {
     if (!req.file) {
@@ -133,7 +140,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 
     const title = String(req.body.title || '').trim() || null;
-    const imageUrl = prepareUploadedImage(req.file);
+    const imageUrl = await prepareUploadedImage(req.file);
 
     const [result] = await pool.query(
       'INSERT INTO strips (user_id, event_id, title, image_url) VALUES (?, NULL, ?, ?)',
@@ -146,9 +153,11 @@ router.post('/', upload.single('image'), async (req, res) => {
   } catch (err) {
     const status = err.status || 500;
     if (status >= 500) console.error(err);
-    res.status(status).json({ error: status === 400 ? err.message : 'Failed to save strip' });
+    const message =
+      status === 400 || status === 503 ? err.message : 'Failed to save strip';
+    res.status(status).json({ error: message });
   } finally {
-    if (!committed) discardUploadedFile(req.file);
+    if (!committed) await discardUploadedFile(req.file);
   }
 });
 

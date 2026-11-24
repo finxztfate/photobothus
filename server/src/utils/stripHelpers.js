@@ -80,7 +80,7 @@ async function deleteStripById(id) {
 
   const keys = storedKeysForStrip(rows[0]);
   await pool.query('DELETE FROM strips WHERE id = ?', [id]);
-  keys.forEach(removeStoredFile);
+  await Promise.all(keys.map((key) => removeStoredFile(key)));
   return true;
 }
 
@@ -92,7 +92,9 @@ async function deleteEventPhotos(eventId) {
   );
   if (!strips.length) return 0;
   await pool.query('DELETE FROM strips WHERE event_id = ?', [eventId]);
-  strips.forEach((strip) => storedKeysForStrip(strip).forEach(removeStoredFile));
+  await Promise.all(
+    strips.flatMap((strip) => storedKeysForStrip(strip).map((key) => removeStoredFile(key)))
+  );
   return strips.length;
 }
 
@@ -103,7 +105,9 @@ async function deleteEventAndFiles(id) {
   );
   const [result] = await pool.query('DELETE FROM events WHERE id = ?', [id]);
   if (!result.affectedRows) return false;
-  strips.forEach((strip) => storedKeysForStrip(strip).forEach(removeStoredFile));
+  await Promise.all(
+    strips.flatMap((strip) => storedKeysForStrip(strip).map((key) => removeStoredFile(key)))
+  );
   return true;
 }
 

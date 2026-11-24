@@ -17,3 +17,19 @@ jest.mock('react-webcam', () => ({
   __esModule: true,
   default: jest.fn(() => null),
 }));
+
+// App probes /api/health on boot; keep unit tests offline-friendly.
+const originalFetch = global.fetch;
+global.fetch = jest.fn((input, init) => {
+  const url = String(input || '');
+  if (url.includes('/api/health')) {
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+  }
+  if (typeof originalFetch === 'function') {
+    return originalFetch(input, init);
+  }
+  return Promise.reject(new TypeError('Failed to fetch'));
+});

@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { apiRequest, clearAuth, getStoredUser, getToken, setAuth } from './api';
+import { apiRequest, clearAuth, getStoredUser, getToken, isNetworkError, setAuth } from './api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getStoredUser());
   const [loading, setLoading] = useState(!!getToken());
+  const [apiUnreachable, setApiUnreachable] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -21,11 +22,17 @@ export function AuthProvider({ children }) {
         if (!cancelled) {
           setUser(data.user);
           setAuth(token, data.user);
+          setApiUnreachable(false);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          clearAuth();
-          setUser(null);
+          if (isNetworkError(err)) {
+            setApiUnreachable(true);
+          } else {
+            clearAuth();
+            setUser(null);
+            setApiUnreachable(false);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -80,6 +87,7 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
+      apiUnreachable,
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
       isCustomer: user?.role === 'customer',
@@ -89,7 +97,7 @@ export function AuthProvider({ children }) {
       logout,
       replaceSession,
     }),
-    [user, loading, login, loginWithGoogle, register, logout, replaceSession]
+    [user, loading, apiUnreachable, login, loginWithGoogle, register, logout, replaceSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

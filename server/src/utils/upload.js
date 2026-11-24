@@ -1,8 +1,10 @@
 const path = require('path');
 const fs = require('fs');
+const fsp = require('fs/promises');
 const multer = require('multer');
 const crypto = require('crypto');
 const { encryptPhoto, decryptPhoto, isEncryptedPhoto } = require('./photoCipher');
+const { createLimiter } = require('./concurrency');
 
 // On Railway, point UPLOADS_DIR at a mounted volume or uploads are lost on every deploy.
 // New photos are stored as YYYY/MM/DD/<random>.<ext> so one directory never holds every file.
@@ -11,6 +13,12 @@ const uploadsDir = process.env.UPLOADS_DIR
   : path.join(__dirname, '..', '..', 'uploads');
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+
+// Encrypt/decrypt is CPU + memory heavy; only a few run at once so a booth
+// full of guests cannot stall the whole Node process.
+const photoWork = createLimiter(Number(process.env.PHOTO_CONCURRENCY || 3), {
+  maxQueued: Number(process.env.PHOTO_QUEUE_LIMIT || 40),
+});
 
 function datedPrefix(date = new Date()) {
   const year = String(date.getUTCFullYear());
@@ -93,19 +101,19 @@ function resolveUploadPath(stored) {
   return full;
 }
 
-function pruneEmptyParents(startDir) {
+async function pruneEmptyParents(startDir) {
   const root = path.resolve(uploadsDir);
   let current = path.resolve(startDir);
   while (current.startsWith(`${root}${path.sep}`)) {
     let entries;
     try {
-      entries = fs.readdirSync(current);
+      entries = await fsp.readdir(current);
     } catch {
       break;
     }
     if (entries.length > 0) break;
     try {
-      fs.rmdirSync(current);
+      await fsp.rmdir(current);
     } catch {
       break;
     }
@@ -113,61 +121,64 @@ function pruneEmptyParents(startDir) {
   }
 }
 
-function unlinkStoredPath(filePath) {
+async function unlinkStoredPath(filePath) {
   if (!filePath) return;
   try {
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
   } catch (err) {
     if (err.code !== 'ENOENT') console.error(err);
     return;
   }
-  pruneEmptyParents(path.dirname(filePath));
+  await pruneEmptyParents(path.dirname(filePath));
 }
 
-function removeStoredFile(stored) {
-  unlinkStoredPath(resolveUploadPath(stored));
+async function removeStoredFile(stored) {
+  await unlinkStoredPath(resolveUploadPath(stored));
 }
 
-function prepareUploadedImage(file) {
+async function prepareUploadedImage(file) {
   if (!file?.path) {
     const error = new Error('Image file is required');
     error.status = 400;
     throw error;
   }
 
-  const header = Buffer.alloc(16);
-  const fd = fs.openSync(file.path, 'r');
-  let bytes = 0;
-  try {
-    bytes = fs.readSync(fd, header, 0, header.length, 0);
-  } finally {
-    fs.closeSync(fd);
-  }
+  return photoWork.run(async () => {
+    const header = Buffer.alloc(16);
+    const fd = await fsp.open(file.path, 'r');
+    let bytes = 0;
+    try {
+      const result = await fd.read(header, 0, header.length, 0);
+      bytes = result.bytesRead;
+    } finally {
+      await fd.close();
+    }
 
-  const sniffed = sniffImage(header.subarray(0, bytes));
-  if (!sniffed) {
-    unlinkStoredPath(file.path);
-    file.path = null;
-    const error = new Error('Only JPEG, PNG, WebP, and GIF images are allowed');
-    error.status = 400;
-    throw error;
-  }
+    const sniffed = sniffImage(header.subarray(0, bytes));
+    if (!sniffed) {
+      await unlinkStoredPath(file.path);
+      file.path = null;
+      const error = new Error('Only JPEG, PNG, WebP, and GIF images are allowed');
+      error.status = 400;
+      throw error;
+    }
 
-  const plain = fs.readFileSync(file.path);
-  const finalPath = `${file.path.slice(0, -'.part'.length)}${sniffed.ext}`;
-  fs.writeFileSync(finalPath, encryptPhoto(plain, sniffed.mime));
-  fs.unlinkSync(file.path);
-  file.path = finalPath;
-  file.filename = path.basename(finalPath);
-  file.mimetype = sniffed.mime;
-  file.storageKey = storageKeyFromPath(finalPath);
-  return file.storageKey;
+    const plain = await fsp.readFile(file.path);
+    const finalPath = `${file.path.slice(0, -'.part'.length)}${sniffed.ext}`;
+    await fsp.writeFile(finalPath, encryptPhoto(plain, sniffed.mime));
+    await fsp.unlink(file.path);
+    file.path = finalPath;
+    file.filename = path.basename(finalPath);
+    file.mimetype = sniffed.mime;
+    file.storageKey = storageKeyFromPath(finalPath);
+    return file.storageKey;
+  });
 }
 
-function discardUploadedFile(file) {
+async function discardUploadedFile(file) {
   if (!file) return;
-  if (file.storageKey) removeStoredFile(file.storageKey);
-  if (file.path) unlinkStoredPath(file.path);
+  if (file.storageKey) await removeStoredFile(file.storageKey);
+  if (file.path) await unlinkStoredPath(file.path);
   file.path = null;
   file.storageKey = null;
 }
@@ -188,13 +199,22 @@ function extensionForMime(mime) {
 }
 
 /** The saved bytes, decrypted when the file was encrypted at rest. */
-function readStoredPhoto(stored) {
+async function readStoredPhoto(stored) {
   const filePath = resolveUploadPath(stored);
-  if (!filePath || !fs.existsSync(filePath)) return null;
-  const bytes = fs.readFileSync(filePath);
-  const decrypted = decryptPhoto(bytes);
-  if (decrypted) return decrypted;
-  return { buffer: bytes, mime: mimeFromName(filePath) };
+  if (!filePath) return null;
+
+  return photoWork.run(async () => {
+    let bytes;
+    try {
+      bytes = await fsp.readFile(filePath);
+    } catch (err) {
+      if (err.code === 'ENOENT') return null;
+      throw err;
+    }
+    const decrypted = decryptPhoto(bytes);
+    if (decrypted) return decrypted;
+    return { buffer: bytes, mime: mimeFromName(filePath) };
+  });
 }
 
 function generateEventCode() {

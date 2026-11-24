@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Welcome from './pages/Welcome';
 import MyGallery from './pages/MyGallery';
+import EventTicketsPage from './pages/EventTicketsPage';
 import {
   EventHostListPage,
   EventHostDetailPage,
@@ -38,6 +39,11 @@ import SiteFooter from './components/SiteFooter';
 import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
 import ThemeToggle from './components/ThemeToggle';
+import CookieConsent from './components/CookieConsent';
+import SystemErrorBoundary from './components/SystemErrorBoundary';
+import ApiAvailabilityGate from './components/ApiAvailabilityGate';
+import AuthApiGuard from './components/AuthApiGuard';
+import NotFound from './pages/NotFound';
 import { AuthProvider, useAuth } from './utils/auth';
 import { apiRequest } from './utils/api';
 import { SPOTLIGHT_ENABLED } from './data/features';
@@ -86,62 +92,71 @@ function App() {
     <GoogleOAuthProvider clientId={googleClientId || 'missing-client-id'}>
       <AuthProvider>
         <Router>
-          <div className="App" data-theme={theme}>
-            <LoadingModal />
-            <Routes>
-              <Route path="/" element={<SitePage className="page-home" {...navProps}><Home /></SitePage>} />
-              <Route
-                path="/spotlight"
-                element={
-                  SPOTLIGHT_ENABLED
-                    ? <SitePage className="page-spotlight" {...navProps}><Spotlight /></SitePage>
-                    : <Navigate to="/" replace />
-                }
-              />
-              <Route path="/photobooth" element={
-                <div className="page-photobooth-wrapper page-fade">
-                  <Photobooth theme={theme} toggleTheme={toggleTheme} />
-                </div>
-              } />
-              <Route path="/layouts" element={<SitePage className="page-layout" {...navProps}><Layout /></SitePage>} />
-              <Route path="/about" element={<SitePage className="page-about" {...navProps}><About /></SitePage>} />
-              <Route path="/faq" element={<SitePage className="page-faq" {...navProps}><Faq /></SitePage>} />
-              <Route path="/login" element={<SitePage className="page-home" {...navProps}><Login /></SitePage>} />
-              <Route path="/signup" element={<SitePage className="page-home" {...navProps}><Signup /></SitePage>} />
-              <Route path="/welcome" element={<SitePage className="page-home" {...navProps}><Welcome /></SitePage>} />
-              <Route path="/gallery" element={<SitePage className="page-home" {...navProps}><MyGallery /></SitePage>} />
-              {/* Host event management (logged-in customer) */}
-              <Route path="/events" element={<SitePage className="page-home" {...navProps}><EventHostListPage /></SitePage>} />
-              <Route path="/events/new" element={<SitePage className="page-home" {...navProps}><EventHostCreatePage /></SitePage>} />
-              <Route path="/events/:id/edit" element={<SitePage className="page-home" {...navProps}><EventHostEditPage /></SitePage>} />
-              <Route path="/events/:id/strips/:stripId/edit" element={<SitePage className="page-home" {...navProps}><EventEditor /></SitePage>} />
-              <Route path="/events/:id" element={<SitePage className="page-home" {...navProps}><EventHostDetailPage /></SitePage>} />
+          <SystemErrorBoundary>
+            <ApiAvailabilityGate>
+              <AuthApiGuard>
+              <div className="App" data-theme={theme}>
+                <LoadingModal />
+                <Routes>
+                  <Route path="/" element={<SitePage className="page-home" {...navProps}><Home /></SitePage>} />
+                  <Route
+                    path="/spotlight"
+                    element={
+                      SPOTLIGHT_ENABLED
+                        ? <SitePage className="page-spotlight" {...navProps}><Spotlight /></SitePage>
+                        : <Navigate to="/" replace />
+                    }
+                  />
+                  <Route path="/photobooth" element={
+                    <div className="page-photobooth-wrapper page-fade">
+                      <Photobooth theme={theme} toggleTheme={toggleTheme} />
+                    </div>
+                  } />
+                  <Route path="/layouts" element={<SitePage className="page-layout" {...navProps}><Layout /></SitePage>} />
+                  <Route path="/about" element={<SitePage className="page-about" {...navProps}><About /></SitePage>} />
+                  <Route path="/faq" element={<SitePage className="page-faq" {...navProps}><Faq /></SitePage>} />
+                  <Route path="/login" element={<SitePage className="page-home" {...navProps}><Login /></SitePage>} />
+                  <Route path="/signup" element={<SitePage className="page-home" {...navProps}><Signup /></SitePage>} />
+                  <Route path="/welcome" element={<SitePage className="page-home" {...navProps}><Welcome /></SitePage>} />
+                  <Route path="/gallery" element={<SitePage className="page-home" {...navProps}><MyGallery /></SitePage>} />
+                  <Route path="/tickets" element={<SitePage className="page-home" {...navProps}><EventTicketsPage /></SitePage>} />
+                  {/* Host event management (logged-in customer) */}
+                  <Route path="/events" element={<SitePage className="page-home" {...navProps}><EventHostListPage /></SitePage>} />
+                  <Route path="/events/new" element={<SitePage className="page-home" {...navProps}><EventHostCreatePage /></SitePage>} />
+                  <Route path="/events/:id/edit" element={<SitePage className="page-home" {...navProps}><EventHostEditPage /></SitePage>} />
+                  <Route path="/events/:id/strips/:stripId/edit" element={<SitePage className="page-home" {...navProps}><EventEditor /></SitePage>} />
+                  <Route path="/events/:id" element={<SitePage className="page-home" {...navProps}><EventHostDetailPage /></SitePage>} />
 
-              {/* Guest event flow — own shell + pages (not site navbar / normal booth) */}
-              <Route path="/e/:code" element={<EventGuestShell />}>
-                <Route index element={<EventPublic />} />
-                <Route path="layouts" element={<div className="page-layout"><EventLayouts /></div>} />
-                <Route path="photobooth" element={
-                  <div className="page-event-photobooth-wrapper">
-                    <EventPhotobooth />
-                  </div>
-                } />
-                <Route path="editor" element={<Navigate to="../photobooth" replace />} />
-              </Route>
+                  {/* Guest event flow — own shell + pages (not site navbar / normal booth) */}
+                  <Route path="/e/:code" element={<EventGuestShell />}>
+                    <Route index element={<EventPublic />} />
+                    <Route path="layouts" element={<div className="page-layout"><EventLayouts /></div>} />
+                    <Route path="photobooth" element={
+                      <div className="page-event-photobooth-wrapper">
+                        <EventPhotobooth />
+                      </div>
+                    } />
+                    <Route path="editor" element={<Navigate to="../photobooth" replace />} />
+                  </Route>
 
-              <Route path="/editor" element={<div className="page-fade"><EditPage /></div>} />
-              <Route path="/admin/login" element={<div className="page-fade"><AdminLogin /></div>} />
-              <Route path="/admin" element={<AdminShell {...navProps} />}>
-                <Route index element={<AdminOverview />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="strips" element={<Navigate to="/admin" replace />} />
-                <Route path="spotlight" element={<AdminSpotlight />} />
-                <Route path="events" element={<AdminEvents />} />
-                <Route path="payments" element={<AdminPayments />} />
-                <Route path="settings" element={<AdminSettings />} />
-              </Route>
-            </Routes>
-          </div>
+                  <Route path="/editor" element={<div className="page-fade"><EditPage /></div>} />
+                  <Route path="/admin/login" element={<div className="page-fade"><AdminLogin /></div>} />
+                  <Route path="/admin" element={<AdminShell {...navProps} />}>
+                    <Route index element={<AdminOverview />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="strips" element={<Navigate to="/admin" replace />} />
+                    <Route path="spotlight" element={<AdminSpotlight />} />
+                    <Route path="events" element={<AdminEvents />} />
+                    <Route path="payments" element={<AdminPayments />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <CookieConsent />
+              </div>
+              </AuthApiGuard>
+            </ApiAvailabilityGate>
+          </SystemErrorBoundary>
         </Router>
       </AuthProvider>
     </GoogleOAuthProvider>
@@ -245,9 +260,9 @@ function AppNavbar({ theme, toggleTheme }) {
               <>
                 {isCustomer && tickets != null && (
                   <Link
-                    to="/events/new"
+                    to="/tickets"
                     className="nav-tickets"
-                    title="Event tickets"
+                    title="Buy event tickets"
                   >
                     <span className="nav-tickets-count">{tickets}</span>
                     <span className="nav-tickets-label">{tickets === 1 ? 'ticket' : 'tickets'}</span>

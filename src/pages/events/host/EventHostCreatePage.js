@@ -3,8 +3,10 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import { buildSchedule } from '../../../utils/eventSchedule';
+import { DEFAULT_MAX_EVENT_UPLOADS } from '../../../data/eventLimits';
+import { allLayoutIds, serializeAllowedLayoutsForApi } from '../../../utils/eventLayoutCapacity';
 import EventScheduleFields from './components/EventScheduleFields';
-import { DEFAULT_MAX_GUEST_UPLOADS } from '../../../data/eventLimits';
+import EventAllowedLayoutsField from './components/EventAllowedLayoutsField';
 import { EventHostDashLayout } from './components/EventHostSidebar';
 import '../../AuthPages.css';
 
@@ -20,12 +22,12 @@ function EventHostCreatePage() {
     location: '',
     welcomeMessage: '',
     hashtags: '',
-    stripsEnabled: true,
+    allowedLayouts: allLayoutIds(),
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [quota, setQuota] = useState(null);
-  const [buying, setBuying] = useState(null);
+  const [adminMaxEventUploads, setAdminMaxEventUploads] = useState(DEFAULT_MAX_EVENT_UPLOADS);
 
   useEffect(() => {
     if (!isAuthenticated || !isCustomer) return;
@@ -38,13 +40,15 @@ function EventHostCreatePage() {
             events: data.events || [],
             canCreate: data.canCreate !== false,
             tickets: Number(data.tickets || 0),
-            potwWinsUntilTicket: Number(data.potwWinsUntilTicket || 3),
           });
+          if (Number(data.maxEventUploads) > 0) {
+            setAdminMaxEventUploads(Number(data.maxEventUploads));
+          }
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.message || 'Could not load events');
-          setQuota({ events: [], canCreate: true, tickets: 0, potwWinsUntilTicket: 3 });
+          setQuota({ events: [], canCreate: true, tickets: 0 });
         }
       }
     })();
@@ -83,24 +87,11 @@ function EventHostCreatePage() {
   const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const schedule = buildSchedule(form.eventDate, form.startTime, form.endTime);
 
-  const requestPack = async (pack) => {
-    setError('');
-    setBuying(pack);
-    try {
-      const data = await apiRequest('/api/tickets/purchase', { method: 'POST', body: { pack } });
-      setError(data.message || `Requested a ${pack}-ticket pack. Tickets are added when payment is marked paid.`);
-    } catch (err) {
-      setError(err.message || 'Could not request tickets');
-    } finally {
-      setBuying(null);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!quota.tickets) {
-      setError('An event ticket is required. Buy a pack or win Photo of the Week 3 times.');
+      setError('You need an event ticket first.');
       return;
     }
     if (schedule.error) {
@@ -120,7 +111,8 @@ function EventHostCreatePage() {
           location: form.location,
           welcomeMessage: form.welcomeMessage,
           hashtags: form.hashtags,
-          stripsEnabled: form.stripsEnabled,
+          stripsEnabled: true,
+          allowedLayouts: serializeAllowedLayoutsForApi(form.allowedLayouts),
         },
       });
       navigate(`/events/${data.event.id}`);
@@ -137,24 +129,11 @@ function EventHostCreatePage() {
       <form className="auth-card auth-card-wide event-details-card" onSubmit={handleSubmit}>
         <p className="auth-kicker">Event dashboard</p>
         <h1>New event</h1>
-        <p className="auth-subtitle">Details guests see on the QR landing page and booth.</p>
-        <p className="auth-hint">
-          This uses 1 event ticket ({quota.tickets} left). Buy a 1, 5, or 10 pack, or earn a ticket by
-          becoming Photo of the Week 3 times ({quota.potwWinsUntilTicket} win{quota.potwWinsUntilTicket === 1 ? '' : 's'} to go).
-          Each guest can upload {DEFAULT_MAX_GUEST_UPLOADS} photos. Guest photos stay hidden until the event ends.
-        </p>
-        <div className="event-ticket-packs">
-          {[1, 5, 10].map((pack) => (
-            <button
-              key={pack}
-              type="button"
-              onClick={() => requestPack(pack)}
-              disabled={buying != null}
-            >
-              {buying === pack ? 'Requesting…' : `Request ${pack} ticket${pack === 1 ? '' : 's'}`}
-            </button>
-          ))}
-        </div>
+        {!quota.tickets ? (
+          <p className="auth-hint">
+            You need a ticket to create an event. <Link to="/tickets">Buy tickets</Link>
+          </p>
+        ) : null}
         {error && <p className="auth-error">{error}</p>}
 
         <label>
@@ -209,14 +188,11 @@ function EventHostCreatePage() {
           />
         </label>
 
-        <label className="auth-checkbox">
-          <input
-            type="checkbox"
-            checked={form.stripsEnabled}
-            onChange={(e) => setForm((prev) => ({ ...prev, stripsEnabled: e.target.checked }))}
-          />
-          <span>Enable photo strips</span>
-        </label>
+        <EventAllowedLayoutsField
+          selectedIds={form.allowedLayouts}
+          adminMaxEventUploads={adminMaxEventUploads}
+          onChange={(allowedLayouts) => setForm((prev) => ({ ...prev, allowedLayouts }))}
+        />
 
         <button type="submit" disabled={submitting || !!schedule.error || !quota.tickets}>
           {submitting ? 'Creating…' : quota.tickets ? 'Create event' : 'Need a ticket'}

@@ -1,0 +1,213 @@
+.ticket-pricing-page {
+  flex: 1;
+  min-height: calc(100vh - 80px);
+  padding: 48px 32px 80px;
+  background: var(--bg-primary);
+  color: var(--text-body);
+}
+
+.ticket-pricing-head {
+  max-width: 1100px;
+  margin: 0 auto 36px;
+  text-align: center;
+}
+
+.ticket-pricing-kicker {
+  margin: 0 0 10px;
+  font-family: var(--font-subheading);
+  color: var(--hiw-subheading);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.ticket-pricing-head h1 {
+  margin: 0 0 10px;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--text-heading);
+}
+
+.ticket-pricing-head p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.ticket-pricing-head strong {
+  color: var(--accent-text);
+}
+
+.ticket-pricing-error {
+  max-width: 1100px;
+  margin: 0 auto 20px;
+  color: var(--danger-text);
+  text-align: center;
+}
+
+.ticket-pricing-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ticket-plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 22px 24px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  color: var(--text-body);
+}
+
+.ticket-plan.is-recommended {
+  border-color: var(--accent);
+  background: var(--bg-card-alt);
+}
+
+.ticket-plan-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-family: var(--font-subheading);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--btn-text);
+  background: var(--accent);
+  padding: 4px 8px;
+}
+
+.ticket-plan h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text-heading);
+}
+
+.ticket-plan-price {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-weight: 500;
+  color: var(--text-heading);
+  line-height: 1;
+}
+
+.ticket-plan-currency {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.ticket-plan-was {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.ticket-plan-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-gradient);
+  color: var(--btn-text);
+  font-family: var(--font-subheading);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ticket-plan-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ticket-plan-cta-ghost {
+  background: transparent;
+  border-color: var(--border-card);
+  color: var(--text-heading);
+  box-shadow: none;
+}
+
+.ticket-plan-cta-ghost:hover {
+  border-color: var(--accent);
+}
+
+.ticket-plan ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-plan li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.ticket-plan li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(-45deg);
+}
+
+.ticket-pricing-foot {
+  max-width: 1100px;
+  margin: 28px auto 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.ticket-pricing-foot a {
+  color: var(--accent-text);
+}
+
+@media (max-width: 1100px) {
+  .ticket-pricing-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ticket-pricing-page {
+    padding: 28px 16px 64px;
+  }
+
+  .ticket-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}

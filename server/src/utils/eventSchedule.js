@@ -77,10 +77,34 @@ function toDateOnly(value) {
   return String(value).slice(0, 10);
 }
 
+/**
+ * A host cannot run two live events at the same time. Back-to-back is allowed
+ * (one ends exactly when the next starts).
+ */
+async function findOverlappingEvent(ownerId, startsAt, endsAt, { excludeEventId = null } = {}) {
+  if (!ownerId || !startsAt || !endsAt) return null;
+  const [rows] = await pool.query(
+    `SELECT id, name, starts_at, ends_at
+     FROM events
+     WHERE owner_id = ?
+       AND is_active = 1
+       AND starts_at IS NOT NULL
+       AND ends_at IS NOT NULL
+       AND (? IS NULL OR id <> ?)
+       AND starts_at < ?
+       AND ends_at > ?
+     ORDER BY starts_at ASC
+     LIMIT 1`,
+    [ownerId, excludeEventId, excludeEventId, endsAt, startsAt]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   closeExpiredEvents,
   closeExpiredEventsQuietly,
   startAutoCloseTimer,
   readInstant,
   toDateOnly,
+  findOverlappingEvent,
 };

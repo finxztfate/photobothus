@@ -4,6 +4,7 @@ import { getAvailableCameras, getFilterFrame } from '../../../data/photoboothDat
 import { getLayoutById, getLayoutPhotoCount, resolveLayoutId } from '../../../data/stripLayouts';
 import { enterMobileFullscreen } from '../../../utils/mobileFullscreen';
 import { saveEventBoothSession } from '../../../utils/eventBoothSession';
+import { layoutsAllowedForGuest } from '../../../utils/eventLayoutCapacity';
 import EventBoothCapture from './components/EventBoothCapture';
 import EventBoothReview from './components/EventBoothReview';
 import EventBoothDone from './components/EventBoothDone';
@@ -21,7 +22,7 @@ function timerLabel(seconds) {
 }
 
 function EventPhotobooth() {
-  const { code } = useOutletContext();
+  const { code, event } = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cameraRef = useRef(null);
@@ -52,6 +53,14 @@ function EventPhotobooth() {
   useEffect(() => {
     getAvailableCameras().then(setAvailableCameras);
   }, []);
+
+  useEffect(() => {
+    if (!event) return;
+    const allowed = layoutsAllowedForGuest(event.allowedLayouts).map((item) => item.id);
+    if (!allowed.includes(layout)) {
+      navigate(`/e/${code}/layouts`, { replace: true });
+    }
+  }, [event, layout, code, navigate]);
 
   useEffect(() => () => {
     if (countdownRef.current) window.clearInterval(countdownRef.current);

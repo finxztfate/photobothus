@@ -14,6 +14,31 @@ export function getApiUrl() {
   return API_URL;
 }
 
+/** True when fetch itself failed (API down, offline, CORS block, etc.). */
+export function isNetworkError(error) {
+  if (!error) return false;
+  if (error.name === 'TypeError') return true;
+  const message = String(error.message || '').toLowerCase();
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('network request failed') ||
+    message.includes('load failed')
+  );
+}
+
+/** Lightweight reachability check used for the system-down screen. */
+export async function checkApiHealth() {
+  const response = await fetch(`${API_URL}/api/health`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error('Health check failed');
+  }
+  return response.json().catch(() => ({ ok: true }));
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }

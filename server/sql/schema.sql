@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS events (
   welcome_message TEXT DEFAULT NULL,
   hashtags VARCHAR(500) DEFAULT NULL,
   strips_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  allowed_layouts TEXT NULL DEFAULT NULL,
   code VARCHAR(32) NOT NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   completed_at TIMESTAMP NULL DEFAULT NULL,
@@ -146,14 +147,14 @@ CREATE TABLE IF NOT EXISTS app_settings (
 ) ENGINE=InnoDB;
 
 INSERT INTO app_settings (setting_key, setting_value)
-SELECT 'max_guest_uploads', '4'
+SELECT 'max_guest_uploads', '2'
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM app_settings WHERE setting_key = 'max_guest_uploads'
 );
 
-UPDATE app_settings SET setting_value = '4'
-WHERE setting_key = 'max_guest_uploads' AND setting_value IN ('3', '10');
+UPDATE app_settings SET setting_value = '2'
+WHERE setting_key = 'max_guest_uploads' AND setting_value IN ('3', '4', '10');
 
 INSERT INTO app_settings (setting_key, setting_value)
 SELECT 'image_access_ttl_hours', '24'

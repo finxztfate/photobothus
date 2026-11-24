@@ -4,10 +4,24 @@ const { upload, prepareUploadedImage, discardUploadedFile, removeStoredFile } = 
 const { mapStripRow, parseLookJson, storedKeysForStrip } = require('../utils/stripHelpers');
 const { loadPublicSpotlight } = require('../utils/spotlight');
 const { optionalAuth } = require('../middleware/auth');
+const { rateLimit } = require('../middleware/rateLimit');
 const { getMaxGuestUploads, getMaxEventUploads } = require('../utils/settings');
 const { closeExpiredEventsQuietly, toDateOnly } = require('../utils/eventSchedule');
+const {
+  parseAllowedLayouts,
+  estimateEventStripLimit,
+  isLayoutAllowed,
+} = require('../utils/eventLayouts');
 
 const router = express.Router();
+
+// Guest booths can burst a few sessions; beyond that, slow the IP down so one
+// shared Wi-Fi (or a scraper) cannot saturate encrypt/disk work.
+const publicUploadLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: Number(process.env.PUBLIC_UPLOAD_RATE_MAX || 40),
+  message: 'Too many uploads from this network. Please wait a few minutes and try again.',
+});
 
 router.get('/spotlight', optionalAuth, async (req, res) => {
   try {
@@ -37,10 +51,9 @@ function sessionFiles(req) {
   };
 }
 
-function discardSessionFiles(req) {
+async function discardSessionFiles(req) {
   const { image, photos } = sessionFiles(req);
-  discardUploadedFile(image);
-  photos.forEach(discardUploadedFile);
+  await Promise.all([discardUploadedFile(image), ...photos.map((file) => discardUploadedFile(file))]);
 }
 
 function parseLayoutId(value) {
@@ -64,7 +77,7 @@ router.get('/events/:code', async (req, res) => {
     await closeExpiredEventsQuietly();
     const [rows] = await pool.query(
       `SELECT id, name, host_name, event_date, starts_at, ends_at, location, welcome_message,
-              hashtags, strips_enabled, code, is_active, created_at
+              hashtags, strips_enabled, allowed_layouts, code, is_active, created_at
        FROM events WHERE code = ? LIMIT 1`,
       [code]
     );
@@ -74,6 +87,7 @@ router.get('/events/:code', async (req, res) => {
     }
 
     const event = rows[0];
+    const allowedLayouts = parseAllowedLayouts(event.allowed_layouts);
 
     const guestKey = normalizeGuestKey(req.query.guestKey);
     let uploadCount = 0;
@@ -88,7 +102,8 @@ router.get('/events/:code', async (req, res) => {
       uploadsRemaining = Math.max(0, maxGuestUploads - uploadCount);
     }
 
-    const maxEventUploads = await getMaxEventUploads();
+    const adminMaxEventUploads = await getMaxEventUploads();
+    const maxEventUploads = estimateEventStripLimit(adminMaxEventUploads, allowedLayouts);
     const [[totalRow]] = await pool.query(
       'SELECT COUNT(*) AS count FROM strips WHERE event_id = ?',
       [event.id]
@@ -107,10 +122,12 @@ router.get('/events/:code', async (req, res) => {
         welcomeMessage: event.welcome_message,
         hashtags: event.hashtags,
         stripsEnabled: !!event.strips_enabled,
+        allowedLayouts,
         code: event.code,
         isActive: !!event.is_active,
         createdAt: event.created_at,
         maxGuestUploads,
+        maxEventUploads,
         guestUploadCount: uploadCount,
         uploadsRemaining,
         eventFull,
@@ -122,7 +139,7 @@ router.get('/events/:code', async (req, res) => {
   }
 });
 
-router.post('/events/:code/strips', uploadSession, async (req, res) => {
+router.post('/events/:code/strips', publicUploadLimiter, uploadSession, async (req, res) => {
   let committed = false;
   const preparedKeys = [];
   try {
@@ -132,7 +149,7 @@ router.post('/events/:code/strips', uploadSession, async (req, res) => {
     // An upload that arrives after the event's end time is refused like any closed event.
     await closeExpiredEventsQuietly();
     const [events] = await pool.query(
-      'SELECT id, is_active FROM events WHERE code = ? LIMIT 1',
+      'SELECT id, is_active, allowed_layouts FROM events WHERE code = ? LIMIT 1',
       [code]
     );
 
@@ -150,10 +167,17 @@ router.post('/events/:code/strips', uploadSession, async (req, res) => {
       return res.status(400).json({ error: 'Guest key is required for event uploads' });
     }
 
+    const allowedLayouts = parseAllowedLayouts(events[0].allowed_layouts);
+    const layoutId = parseLayoutId(req.body.layoutId);
+    if (layoutId != null && !isLayoutAllowed(allowedLayouts, layoutId)) {
+      return res.status(400).json({ error: 'That strip layout is not allowed for this event' });
+    }
+
     // The per-guest limit below relies on a key the guest's browser makes up,
     // so a fresh key resets it. This total is counted on the server and holds
     // no matter what key is sent.
-    const maxEventUploads = await getMaxEventUploads();
+    const adminMaxEventUploads = await getMaxEventUploads();
+    const maxEventUploads = estimateEventStripLimit(adminMaxEventUploads, allowedLayouts);
     const [[totalRow]] = await pool.query(
       'SELECT COUNT(*) AS count FROM strips WHERE event_id = ?',
       [events[0].id]
@@ -181,17 +205,15 @@ router.post('/events/:code/strips', uploadSession, async (req, res) => {
     }
 
     const title = String(req.body.title || '').trim() || null;
-    const photoKeys = photos.map((file) => {
-      const key = prepareUploadedImage(file);
+    const photoKeys = [];
+    for (const file of photos) {
+      const key = await prepareUploadedImage(file);
       preparedKeys.push(key);
-      return key;
-    });
-    const imageUrl = image
-      ? prepareUploadedImage(image)
-      : photoKeys[0];
+      photoKeys.push(key);
+    }
+    const imageUrl = image ? await prepareUploadedImage(image) : photoKeys[0];
     if (image) preparedKeys.push(imageUrl);
 
-    const layoutId = parseLayoutId(req.body.layoutId);
     const photoUrlsJson = photoKeys.length ? JSON.stringify(photoKeys) : null;
     const lookJson = serializeLook(req.body.look);
 
@@ -213,16 +235,18 @@ router.post('/events/:code/strips', uploadSession, async (req, res) => {
   } catch (err) {
     const status = err.status || 500;
     if (status >= 500) console.error(err);
-    res.status(status).json({ error: status === 400 ? err.message : 'Failed to upload strip' });
+    const message =
+      status === 400 || status === 503 ? err.message : 'Failed to upload strip';
+    res.status(status).json({ error: message });
   } finally {
     if (!committed) {
-      discardSessionFiles(req);
-      preparedKeys.forEach(removeStoredFile);
+      await discardSessionFiles(req);
+      await Promise.all(preparedKeys.map((key) => removeStoredFile(key)));
     }
   }
 });
 
-router.patch('/events/:code/strips/:id', uploadSession, async (req, res) => {
+router.patch('/events/:code/strips/:id', publicUploadLimiter, uploadSession, async (req, res) => {
   let committed = false;
   let newImageKey = null;
   try {
@@ -258,7 +282,7 @@ router.patch('/events/:code/strips/:id', uploadSession, async (req, res) => {
     }
 
     if (image) {
-      newImageKey = prepareUploadedImage(image);
+      newImageKey = await prepareUploadedImage(image);
     }
 
     await pool.query(
@@ -269,7 +293,7 @@ router.patch('/events/:code/strips/:id', uploadSession, async (req, res) => {
 
     if (newImageKey && rows[0].image_url && rows[0].image_url !== newImageKey) {
       const keep = new Set(storedKeysForStrip({ ...rows[0], image_url: newImageKey }));
-      if (!keep.has(rows[0].image_url)) removeStoredFile(rows[0].image_url);
+      if (!keep.has(rows[0].image_url)) await removeStoredFile(rows[0].image_url);
     }
 
     const [updated] = await pool.query('SELECT * FROM strips WHERE id = ?', [rows[0].id]);
@@ -288,11 +312,13 @@ router.patch('/events/:code/strips/:id', uploadSession, async (req, res) => {
   } catch (err) {
     const status = err.status || 500;
     if (status >= 500) console.error(err);
-    res.status(status).json({ error: status === 400 ? err.message : 'Failed to update strip' });
+    const message =
+      status === 400 || status === 503 ? err.message : 'Failed to update strip';
+    res.status(status).json({ error: message });
   } finally {
     if (!committed) {
-      discardSessionFiles(req);
-      if (newImageKey) removeStoredFile(newImageKey);
+      await discardSessionFiles(req);
+      if (newImageKey) await removeStoredFile(newImageKey);
     }
   }
 });

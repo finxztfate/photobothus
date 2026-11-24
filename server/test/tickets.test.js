@@ -94,3 +94,16 @@ test('three Photo of the Week wins grant one event ticket', async () => {
   assert.equal(account.body.potwWins, 3);
   assert.equal(account.body.tickets, 1);
 });
+
+test('Pack and Host include bonus tickets on fulfillment', async () => {
+  const { ticketsGrantedForPack } = require('../src/utils/tickets');
+  assert.equal(ticketsGrantedForPack(1), 1);
+  assert.equal(ticketsGrantedForPack(5), 6);
+  assert.equal(ticketsGrantedForPack(10), 12);
+
+  const listed = await app.api('GET', '/api/tickets', { as: host });
+  assert.equal(listed.body.bonuses[5], 1);
+  assert.equal(listed.body.bonuses[10], 2);
+  assert.equal(listed.body.granted[5], 6);
+  assert.equal(listed.body.granted[10], 12);
+});

@@ -4,7 +4,13 @@ import { apiRequest } from '../../../utils/api';
 import { useAuth } from '../../../utils/auth';
 import { buildSchedule, toTimeInputValue } from '../../../utils/eventSchedule';
 import EventScheduleFields from './components/EventScheduleFields';
-import { DEFAULT_MAX_GUEST_UPLOADS } from '../../../data/eventLimits';
+import { DEFAULT_MAX_GUEST_UPLOADS, DEFAULT_MAX_EVENT_UPLOADS } from '../../../data/eventLimits';
+import {
+  allLayoutIds,
+  normalizeAllowedLayoutIds,
+  serializeAllowedLayoutsForApi,
+} from '../../../utils/eventLayoutCapacity';
+import EventAllowedLayoutsField from './components/EventAllowedLayoutsField';
 import { EventHostDashLayout } from './components/EventHostSidebar';
 import '../../AuthPages.css';
 
@@ -28,11 +34,13 @@ function EventHostEditPage() {
     welcomeMessage: '',
     hashtags: '',
     stripsEnabled: false,
+    allowedLayouts: allLayoutIds(),
   });
   const [error, setError] = useState('');
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [adminMaxEventUploads, setAdminMaxEventUploads] = useState(DEFAULT_MAX_EVENT_UPLOADS);
 
   useEffect(() => {
     if (!isAuthenticated || !isCustomer) return undefined;
@@ -52,7 +60,16 @@ function EventHostEditPage() {
           welcomeMessage: event.welcomeMessage || '',
           hashtags: event.hashtags || '',
           stripsEnabled: !!event.stripsEnabled,
+          allowedLayouts: normalizeAllowedLayoutIds(event.allowedLayouts || allLayoutIds()),
         });
+        try {
+          const list = await apiRequest('/api/events');
+          if (!cancelled && Number(list.maxEventUploads) > 0) {
+            setAdminMaxEventUploads(Number(list.maxEventUploads));
+          }
+        } catch {
+          /* keep default */
+        }
       } catch (err) {
         if (!cancelled) setError(err.message || 'Failed to load event');
       } finally {
@@ -94,6 +111,7 @@ function EventHostEditPage() {
           welcomeMessage: form.welcomeMessage,
           hashtags: form.hashtags,
           stripsEnabled: form.stripsEnabled,
+          allowedLayouts: serializeAllowedLayoutsForApi(form.allowedLayouts),
         },
       });
       navigate(`/events/${id}`);
@@ -193,6 +211,12 @@ function EventHostEditPage() {
           />
           <span>Enable photo strips</span>
         </label>
+
+        <EventAllowedLayoutsField
+          selectedIds={form.allowedLayouts}
+          adminMaxEventUploads={adminMaxEventUploads}
+          onChange={(allowedLayouts) => setForm((prev) => ({ ...prev, allowedLayouts }))}
+        />
 
         <button type="submit" disabled={submitting || deleting || !!schedule.error}>
           {submitting ? 'Saving…' : 'Save changes'}

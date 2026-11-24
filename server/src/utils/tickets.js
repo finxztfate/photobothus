@@ -2,6 +2,56 @@ const { pool } = require('../db');
 
 const POTW_WINS_PER_TICKET = 3;
 const TICKET_PACKS = [1, 5, 10];
+const PACK_BONUS_TICKETS = { 1: 0, 5: 1, 10: 2 };
+const DEFAULT_TICKET_PRICE_PHP = 149;
+// Pack / Host vs buying singles: ~13% off 5, ~20% off 10 at the default unit price.
+const DEFAULT_PACK_PHP = { 1: 149, 5: 649, 10: 1199 };
+
+function unitPricePhp() {
+  const unit = Number(process.env.TICKET_PRICE_PHP || DEFAULT_TICKET_PRICE_PHP);
+  return unit > 0 ? unit : DEFAULT_TICKET_PRICE_PHP;
+}
+
+function packListPricePhp(pack) {
+  return unitPricePhp() * Number(pack);
+}
+
+function packPricePhp(pack) {
+  const n = Number(pack);
+  const override = Number(process.env[`TICKET_PACK_${n}_PHP`] || 0);
+  if (override > 0) return override;
+  const unit = unitPricePhp();
+  if (n === 1) return unit;
+  const defaultList = DEFAULT_TICKET_PRICE_PHP * n;
+  const defaultSale = DEFAULT_PACK_PHP[n];
+  if (defaultSale) return Math.round((unit * n * defaultSale) / defaultList);
+  return unit * n;
+}
+
+function ticketPriceList() {
+  return Object.fromEntries(TICKET_PACKS.map((pack) => [pack, packPricePhp(pack)]));
+}
+
+function ticketListPriceList() {
+  return Object.fromEntries(TICKET_PACKS.map((pack) => [pack, packListPricePhp(pack)]));
+}
+
+function packBonusTickets(pack) {
+  return PACK_BONUS_TICKETS[Number(pack)] || 0;
+}
+
+function ticketsGrantedForPack(pack) {
+  const n = Number(pack);
+  return n + packBonusTickets(n);
+}
+
+function ticketBonusList() {
+  return Object.fromEntries(TICKET_PACKS.map((pack) => [pack, packBonusTickets(pack)]));
+}
+
+function ticketGrantedList() {
+  return Object.fromEntries(TICKET_PACKS.map((pack) => [pack, ticketsGrantedForPack(pack)]));
+}
 
 function ticketAccount(row) {
   const tickets = Number(row?.event_tickets || 0);
@@ -65,6 +115,14 @@ async function recordPotwWin(userId) {
 module.exports = {
   POTW_WINS_PER_TICKET,
   TICKET_PACKS,
+  packPricePhp,
+  packListPricePhp,
+  ticketPriceList,
+  ticketListPriceList,
+  packBonusTickets,
+  ticketsGrantedForPack,
+  ticketBonusList,
+  ticketGrantedList,
   ticketAccount,
   getTicketAccount,
   addTickets,
