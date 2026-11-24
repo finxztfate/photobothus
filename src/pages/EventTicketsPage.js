@@ -132,7 +132,7 @@ function EventTicketsPage() {
         return;
       }
       setShop((current) => ({ ...(current || {}), ...data }));
-      setError(data.message || 'Tickets are added when the pack is marked paid.');
+      setError(data.message || 'Checkout did not return a payment link.');
     } catch (err) {
       setError(err.message || 'Could not start checkout');
     } finally {
@@ -141,6 +141,12 @@ function EventTicketsPage() {
   };
 
   const tickets = Number(shop?.tickets || 0);
+  const checkoutEnabled = shop?.checkoutEnabled !== false && shop?.polarEnabled !== false;
+  const checkoutNotice =
+    shop && !checkoutEnabled
+      ? (shop.checkoutMessage
+        || 'Online ticket checkout is not available yet. Earn tickets from Spotlight, or ask an admin to issue tickets.')
+      : '';
 
   return (
     <div className="ticket-pricing-page">
@@ -152,6 +158,7 @@ function EventTicketsPage() {
           One ticket creates one hosted event.
         </p>
       </header>
+      {checkoutNotice ? <p className="ticket-pricing-notice">{checkoutNotice}</p> : null}
       {error && <p className="ticket-pricing-error">{error}</p>}
       <div className="ticket-pricing-grid">
         {PLANS.map((plan) => {
@@ -161,10 +168,11 @@ function EventTicketsPage() {
           const listPrice = plan.pack ? formatPrice(list) : null;
           const onSale = Boolean(plan.pack && sale > 0 && list > sale);
           const buyingThis = buying === plan.pack;
+          const canBuy = Boolean(shop && checkoutEnabled && buying == null);
           return (
             <article
               key={plan.id}
-              className={`ticket-plan${plan.recommended ? ' is-recommended' : ''}`}
+              className={`ticket-plan${plan.recommended ? ' is-recommended' : ''}${plan.pack && !checkoutEnabled ? ' is-disabled' : ''}`}
             >
               {plan.recommended ? <span className="ticket-plan-badge">Recommended</span> : null}
               <h2>{plan.name}</h2>
@@ -181,10 +189,15 @@ function EventTicketsPage() {
                 <button
                   type="button"
                   className="ticket-plan-cta"
-                  disabled={buying != null || !shop}
+                  disabled={!canBuy}
                   onClick={() => buyPack(plan.pack)}
+                  title={!checkoutEnabled ? checkoutNotice : undefined}
                 >
-                  {buyingThis ? 'Opening checkout…' : `Buy ${plan.name}`}
+                  {buyingThis
+                    ? 'Opening checkout…'
+                    : !checkoutEnabled
+                      ? 'Checkout unavailable'
+                      : `Buy ${plan.name}`}
                 </button>
               )}
               <ul>

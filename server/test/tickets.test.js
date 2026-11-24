@@ -39,7 +39,14 @@ test('creating an event spends one ticket and blocks at zero', async () => {
   const after = await app.api('GET', '/api/events', { as: host });
   assert.equal(after.body.tickets, 0);
 
-  const blocked = await app.api('POST', '/api/events', { as: host, body: eventDetails({ name: 'Second' }) });
+  const blocked = await app.api('POST', '/api/events', {
+    as: host,
+    body: eventDetails({
+      name: 'Second',
+      startsAt: inMinutes(200),
+      endsAt: inMinutes(320),
+    }),
+  });
   assert.equal(blocked.status, 402);
   assert.equal(blocked.body.code, 'EVENT_TICKET_REQUIRED');
 });

@@ -28,6 +28,22 @@ function polarConfig() {
   };
 }
 
+const CHECKOUT_UNAVAILABLE_MESSAGE =
+  'Online ticket checkout is not available yet. You can still earn tickets from Spotlight, or ask an admin to issue tickets.';
+
+function checkoutReady() {
+  const polar = polarConfig();
+  return Boolean(polar?.token && polar?.productId && packPricePhp(1) > 0);
+}
+
+function paymentsNotReady(res) {
+  return res.status(503).json({
+    error: CHECKOUT_UNAVAILABLE_MESSAGE,
+    code: 'PAYMENTS_NOT_READY',
+    checkoutEnabled: false,
+  });
+}
+
 function publicSiteOrigin(req) {
   if (process.env.CLIENT_ORIGIN) {
     return process.env.CLIENT_ORIGIN.split(',')[0].trim().replace(/\/$/, '');
@@ -127,6 +143,7 @@ function verifyPolarWebhook(rawBody, headers, secret) {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const account = await getTicketAccount(req.user.id);
+    const enabled = checkoutReady();
     res.json({
       ...account,
       packs: TICKET_PACKS,
@@ -134,7 +151,9 @@ router.get('/', requireAuth, async (req, res) => {
       listPrices: ticketListPriceList(),
       bonuses: ticketBonusList(),
       granted: ticketGrantedList(),
-      polarEnabled: Boolean(polarConfig()?.productId),
+      polarEnabled: enabled,
+      checkoutEnabled: enabled,
+      checkoutMessage: enabled ? null : CHECKOUT_UNAVAILABLE_MESSAGE,
     });
   } catch (err) {
     console.error(err);
@@ -149,6 +168,10 @@ router.post('/purchase', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Choose a 1, 5, or 10 ticket pack' });
     }
 
+    if (!checkoutReady()) {
+      return paymentsNotReady(res);
+    }
+
     const polar = polarConfig();
     const amount = packPricePhp(pack);
     const granted = ticketsGrantedForPack(pack);
@@ -160,51 +183,44 @@ router.post('/purchase', requireAuth, async (req, res) => {
       [req.user.id, amount || pack, note]
     );
 
-    if (!polar) {
-      const account = await getTicketAccount(req.user.id);
-      return res.status(201).json({
-        ok: true,
-        pending: true,
-        pack,
-        ...account,
-        message: 'Payment is pending. Tickets are added when the pack is marked paid.',
-      });
-    }
-
-    if (!polar.productId) {
-      return res.status(500).json({ error: 'Set POLAR_PRODUCT_ID to your Polar product.' });
-    }
-    if (!(amount > 0)) {
-      return res.status(500).json({
-        error: 'Set TICKET_PRICE_PHP (pesos per ticket) or TICKET_PACK_1_PHP / TICKET_PACK_5_PHP / TICKET_PACK_10_PHP.',
-      });
-    }
-
     const origin = publicSiteOrigin(req);
-    const checkout = await polarFetch('/checkouts/', {
-      method: 'POST',
-      body: {
-        products: [polar.productId],
-        prices: {
-          [polar.productId]: [
-            {
-              amount_type: 'fixed',
-              price_amount: amount * 100,
-              price_currency: polar.currency,
-            },
-          ],
+    let checkout;
+    try {
+      checkout = await polarFetch('/checkouts/', {
+        method: 'POST',
+        body: {
+          products: [polar.productId],
+          prices: {
+            [polar.productId]: [
+              {
+                amount_type: 'fixed',
+                price_amount: amount * 100,
+                price_currency: polar.currency,
+              },
+            ],
+          },
+          success_url: `${origin}/tickets?checkout_id={CHECKOUT_ID}`,
+          return_url: `${origin}/tickets?tickets=cancel`,
+          customer_email: req.user.email || undefined,
+          external_customer_id: String(req.user.id),
+          metadata: {
+            userId: String(req.user.id),
+            pack: String(pack),
+            paymentId: String(result.insertId),
+          },
         },
-        success_url: `${origin}/tickets?checkout_id={CHECKOUT_ID}`,
-        return_url: `${origin}/tickets?tickets=cancel`,
-        customer_email: req.user.email || undefined,
-        external_customer_id: String(req.user.id),
-        metadata: {
-          userId: String(req.user.id),
-          pack: String(pack),
-          paymentId: String(result.insertId),
-        },
-      },
-    });
+      });
+    } catch (err) {
+      await pool.query(
+        "UPDATE payments SET status = 'failed', note = CONCAT(COALESCE(note, ''), ' [checkout failed]') WHERE id = ?",
+        [result.insertId]
+      ).catch(() => {});
+      console.error(err);
+      return res.status(502).json({
+        error: 'Checkout could not be started right now. Please try again later, or ask an admin to issue tickets.',
+        code: 'CHECKOUT_FAILED',
+      });
+    }
 
     res.status(201).json({
       ok: true,
@@ -214,14 +230,18 @@ router.post('/purchase', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || 'Failed to start Polar checkout' });
+    res.status(err.status || 500).json({
+      error: err.status && err.status < 500
+        ? (err.message || 'Could not start checkout')
+        : 'Failed to start ticket checkout',
+    });
   }
 });
 
 router.post('/confirm', requireAuth, async (req, res) => {
   try {
-    if (!polarConfig()) {
-      return res.status(400).json({ error: 'Polar is not configured' });
+    if (!checkoutReady()) {
+      return paymentsNotReady(res);
     }
     const checkoutId = String(req.body.checkoutId || req.body.sessionId || '').trim();
     if (!checkoutId) {

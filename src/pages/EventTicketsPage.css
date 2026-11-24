@@ -47,6 +47,27 @@
   text-align: center;
 }
 
+.ticket-pricing-notice {
+  max-width: 720px;
+  margin: 0 auto 20px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text-body);
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.ticket-plan.is-disabled {
+  opacity: 0.72;
+}
+
+.ticket-plan.is-disabled .ticket-plan-cta:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
 .ticket-pricing-grid {
   max-width: 1180px;
   margin: 0 auto;
