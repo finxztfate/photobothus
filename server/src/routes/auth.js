@@ -43,11 +43,17 @@ router.post('/google', async (req, res) => {
   try {
     const credential = String(req.body.credential || '').trim();
     const mode = String(req.body.mode || 'login').trim().toLowerCase();
+    const acceptTerms = req.body.acceptTerms === true || req.body.acceptTerms === 'true';
     if (!credential) {
       return res.status(400).json({ error: 'Google credential is required' });
     }
     if (mode !== 'login' && mode !== 'signup') {
       return res.status(400).json({ error: 'Google mode must be login or signup' });
+    }
+    if (mode === 'signup' && !acceptTerms) {
+      return res.status(400).json({
+        error: 'Please agree to the Terms of Use and Privacy Policy to create an account.',
+      });
     }
     if (!process.env.GOOGLE_CLIENT_ID) {
       return res.status(500).json({ error: 'GOOGLE_CLIENT_ID is not configured on the server' });

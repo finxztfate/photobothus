@@ -78,6 +78,17 @@ async function ensureSpotlightColumn(connection, database) {
     );
     console.log('Added spotlight week start column');
   }
+
+  const [statusCol] = await connection.query(
+    `SELECT 1 FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'strips' AND COLUMN_NAME = 'spotlight_status' LIMIT 1`,
+    [database]
+  );
+  if (!statusCol.length) {
+    const sql = fs.readFileSync(path.join(__dirname, '..', 'sql', 'migrate_spotlight_status.sql'), 'utf8');
+    await connection.query(sql);
+    console.log('Added spotlight_status column');
+  }
 }
 
 async function ensureStripSessionColumns(connection, database) {

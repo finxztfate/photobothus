@@ -4,6 +4,7 @@ import './Gallery.css';
 import './AdminDashboard.css';
 
 function AdminSpotlight() {
+  const [pending, setPending] = useState([]);
   const [strips, setStrips] = useState([]);
   const [picks, setPicks] = useState([]);
   const [captions, setCaptions] = useState({});
@@ -14,6 +15,7 @@ function AdminSpotlight() {
 
   const load = async () => {
     const data = await apiRequest('/api/admin/spotlight');
+    setPending(data.pending || []);
     setStrips(data.strips || []);
     setPicks(data.picks || []);
     setWeekLockedUntil(data.weekLockedUntil || null);
@@ -26,6 +28,7 @@ function AdminSpotlight() {
       try {
         const data = await apiRequest('/api/admin/spotlight');
         if (cancelled) return;
+        setPending(data.pending || []);
         setStrips(data.strips || []);
         setPicks(data.picks || []);
         setWeekLockedUntil(data.weekLockedUntil || null);
@@ -36,6 +39,22 @@ function AdminSpotlight() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const review = async (strip, action) => {
+    setBusyId(`${action}-${strip.id}`);
+    setError('');
+    try {
+      await apiRequest('/api/admin/spotlight/review', {
+        method: 'POST',
+        body: { stripId: strip.id, action },
+      });
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const feature = async (strip, slot) => {
     setBusyId(`${slot}-${strip.id}`);
@@ -84,10 +103,55 @@ function AdminSpotlight() {
       <header className="admin-header dash-header">
         <div>
           <h1>Spotlight</h1>
-          <p>Home carousel is a staff pick. Photo of the week needs 10 hearts; otherwise the slot stays empty until the next Sunday midnight.</p>
+          <p>
+            Review submissions before they go public. Approved strips enter this week’s contest.
+            Home carousel is a staff pick. Photo of the week needs 10 hearts.
+          </p>
         </div>
       </header>
       {error && <p className="admin-error">{error}</p>}
+
+      <section className="dash-panel">
+        <div className="dash-panel-head">
+          <h2>Pending review ({pending.length})</h2>
+        </div>
+        <p className="dash-muted">
+          Check that each photo is appropriate and eligible before approving. Rejected entries never appear publicly.
+        </p>
+        <div className="admin-grid admin-uploads-grid">
+          {pending.map((strip) => (
+            <article key={strip.id} className="admin-card admin-upload-card">
+              <img className="admin-strip-thumb" src={strip.imageUrl} alt={strip.title || 'Strip'} />
+              <div className="admin-card-body admin-spotlight-card">
+                <div>
+                  <div>{strip.title || 'Untitled'}</div>
+                  <small>{strip.credit}{strip.email ? ` · ${strip.email}` : ''}</small>
+                  {strip.spotlightDetails?.quote ? (
+                    <p className="dash-muted">{strip.spotlightDetails.quote}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="admin-action-btn"
+                  onClick={() => review(strip, 'approve')}
+                  disabled={busyId === `approve-${strip.id}`}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="admin-action-btn"
+                  onClick={() => review(strip, 'reject')}
+                  disabled={busyId === `reject-${strip.id}`}
+                >
+                  Reject
+                </button>
+              </div>
+            </article>
+          ))}
+          {!pending.length && <p className="dash-muted">No submissions waiting for review.</p>}
+        </div>
+      </section>
 
       <section className="dash-panel">
         <div className="dash-panel-head">
@@ -131,45 +195,50 @@ function AdminSpotlight() {
         </ul>
       </section>
 
-      <div className="admin-grid admin-uploads-grid">
-        {strips.map((strip) => (
-          <article key={strip.id} className="admin-card admin-upload-card">
-            <img className="admin-strip-thumb" src={strip.imageUrl} alt={strip.title || 'Strip'} />
-            <div className="admin-card-body admin-spotlight-card">
-              <div>
-                <div>{strip.title || 'Untitled'}</div>
-                <small>{strip.credit}</small>
+      <section className="dash-panel">
+        <div className="dash-panel-head">
+          <h2>Approved entries</h2>
+        </div>
+        <div className="admin-grid admin-uploads-grid">
+          {strips.map((strip) => (
+            <article key={strip.id} className="admin-card admin-upload-card">
+              <img className="admin-strip-thumb" src={strip.imageUrl} alt={strip.title || 'Strip'} />
+              <div className="admin-card-body admin-spotlight-card">
+                <div>
+                  <div>{strip.title || 'Untitled'}</div>
+                  <small>{strip.credit}</small>
+                </div>
+                <label>
+                  Caption
+                  <input
+                    value={captions[strip.id] || ''}
+                    onChange={(e) => setCaptions((prev) => ({ ...prev, [strip.id]: e.target.value }))}
+                    placeholder="Short line shown with this photo"
+                    maxLength={500}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="admin-action-btn"
+                  onClick={() => feature(strip, 'week')}
+                  disabled={weekLocked || busyId === `week-${strip.id}`}
+                >
+                  Photo of the week
+                </button>
+                <button
+                  type="button"
+                  className="admin-action-btn"
+                  onClick={() => feature(strip, 'home')}
+                  disabled={busyId === `home-${strip.id}`}
+                >
+                  Add to home
+                </button>
               </div>
-              <label>
-                Caption
-                <input
-                  value={captions[strip.id] || ''}
-                  onChange={(e) => setCaptions((prev) => ({ ...prev, [strip.id]: e.target.value }))}
-                  placeholder="Short line shown with this photo"
-                  maxLength={500}
-                />
-              </label>
-              <button
-                type="button"
-                className="admin-action-btn"
-                onClick={() => feature(strip, 'week')}
-                disabled={weekLocked || busyId === `week-${strip.id}`}
-              >
-                Photo of the week
-              </button>
-              <button
-                type="button"
-                className="admin-action-btn"
-                onClick={() => feature(strip, 'home')}
-                disabled={busyId === `home-${strip.id}`}
-              >
-                Add to home
-              </button>
-            </div>
-          </article>
-        ))}
-        {!strips.length && <p className="dash-muted">No customers have allowed a strip yet.</p>}
-      </div>
+            </article>
+          ))}
+          {!strips.length && <p className="dash-muted">No approved strips yet.</p>}
+        </div>
+      </section>
     </div>
   );
 }

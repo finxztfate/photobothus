@@ -112,6 +112,7 @@ export const STRIP_LAYOUTS = [
     slug: '4x6-3poses',
     name: 'Size 4x6 3 Poses',
     label: ['Size 4x6', '3 Poses'],
+    publicAvailable: false,
     photoCount: 3,
     aspect: '3 / 2',
     areas: '"a b" "c d"',
@@ -134,6 +135,7 @@ export const STRIP_LAYOUTS = [
     slug: '4x6-4poses',
     name: 'Size 4x6 4 Poses',
     label: ['Size 4x6', '4 Poses'],
+    publicAvailable: false,
     photoCount: 4,
     aspect: '16 / 10',
     areas: '"a a b" "c d e"',
@@ -253,6 +255,15 @@ export function getLayoutById(idOrSlug) {
     return STRIP_LAYOUTS.find((l) => l.id === numeric) || STRIP_LAYOUTS[0];
   }
   return STRIP_LAYOUTS.find((l) => l.slug === idOrSlug) || STRIP_LAYOUTS[0];
+}
+
+/** Layouts shown on the public /layouts → photobooth flow. */
+export function getPublicLayouts() {
+  return STRIP_LAYOUTS.filter((layout) => layout.publicAvailable !== false);
+}
+
+export function isPublicLayout(idOrSlug) {
+  return getLayoutById(idOrSlug).publicAvailable !== false;
 }
 
 export function resolveLayoutId(param) {

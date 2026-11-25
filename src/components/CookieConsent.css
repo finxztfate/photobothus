@@ -28,6 +28,11 @@
   line-height: 1.4;
 }
 
+.cookie-consent a {
+  color: #e8a33d;
+  text-decoration: underline;
+}
+
 .cookie-consent-accept {
   flex-shrink: 0;
   border: 1px solid #e8a33d;

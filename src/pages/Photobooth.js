@@ -5,6 +5,7 @@ import {
   resolveLayoutId,
   getLayoutPhotoCount,
   getLayoutCssClass,
+  isPublicLayout,
 } from '../data/filterTemplates';
 import { filterPresets, getAvailableCameras, getFilterFrame, getFiltersForLayout } from '../data/photoboothData';
 import { applyBoothFilterToImageSrc } from '../utils/captureFrame';
@@ -35,7 +36,8 @@ function PhotoboothDesktop({ theme, toggleTheme }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const layoutParam = searchParams.get('layout');
-  const layout = layoutParam ? resolveLayoutId(layoutParam) : 1;
+  const requestedLayout = layoutParam ? resolveLayoutId(layoutParam) : 1;
+  const layout = isPublicLayout(requestedLayout) ? requestedLayout : 1;
 
   const [selectedFilter, setSelectedFilter] = useState('normal');
   const [showFilterModal, setShowFilterModal] = useState(false);

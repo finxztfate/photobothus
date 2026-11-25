@@ -19,8 +19,11 @@ const {
   expireWeekPick,
   weekEndsAt,
   weekIsCurrent,
+  weekStartKey,
+  getSpotlightTz,
   loadAdminStandings,
 } = require('../utils/spotlight');
+const { parseSpotlightDetails } = require('../utils/spotlightDetails');
 const { addTickets } = require('../utils/tickets');
 const bcrypt = require('bcryptjs');
 
@@ -714,11 +717,20 @@ router.get('/spotlight', async (_req, res) => {
   try {
     await expireWeekPick();
     const standings = await loadAdminStandings();
+    const [pendingRows] = await pool.query(
+      `SELECT s.id, s.title, s.image_url, s.spotlight_details, s.created_at, u.display_name, u.email
+       FROM strips s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.spotlight_opt_in = 1 AND s.spotlight_status = 'pending'
+         AND s.event_id IS NULL AND s.user_id IS NOT NULL
+       ORDER BY s.id ASC`
+    );
     const [eligible] = await pool.query(
       `SELECT s.id, s.title, s.image_url, s.created_at, u.display_name
        FROM strips s
        JOIN users u ON u.id = s.user_id
-       WHERE s.spotlight_opt_in = 1 AND s.event_id IS NULL AND s.user_id IS NOT NULL
+       WHERE s.spotlight_opt_in = 1 AND s.spotlight_status = 'approved'
+         AND s.event_id IS NULL AND s.user_id IS NOT NULL
        ORDER BY s.id DESC`
     );
     const [picks] = await pool.query(
@@ -726,10 +738,19 @@ router.get('/spotlight', async (_req, res) => {
        FROM spotlight_picks p
        JOIN strips s ON s.id = p.strip_id
        JOIN users u ON u.id = s.user_id
-       WHERE s.spotlight_opt_in = 1 AND s.event_id IS NULL
+       WHERE s.spotlight_opt_in = 1 AND s.spotlight_status = 'approved' AND s.event_id IS NULL
        ORDER BY p.id ASC`
     );
-    const strips = await mapStripRows(eligible, (row) => ({ credit: row.display_name || 'Customer' }));
+    const pending = await mapStripRows(pendingRows, (row) => ({
+      credit: row.display_name || 'Customer',
+      email: row.email || null,
+      spotlightDetails: parseSpotlightDetails(row.spotlight_details),
+      spotlightStatus: 'pending',
+    }));
+    const strips = await mapStripRows(eligible, (row) => ({
+      credit: row.display_name || 'Customer',
+      spotlightStatus: 'approved',
+    }));
     const mappedPicks = picks.map((row) => ({
       id: row.id,
       stripId: row.strip_id,
@@ -741,6 +762,7 @@ router.get('/spotlight', async (_req, res) => {
     }));
     const week = mappedPicks.find((pick) => pick.slot === 'week' && weekIsCurrent(pick.createdAt));
     res.json({
+      pending,
       strips,
       picks: mappedPicks,
       standings,
@@ -749,6 +771,57 @@ router.get('/spotlight', async (_req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load Spotlight' });
+  }
+});
+
+router.post('/spotlight/review', async (req, res) => {
+  try {
+    const stripId = Number(req.body.stripId);
+    const action = String(req.body.action || '').trim().toLowerCase();
+    if (!Number.isFinite(stripId) || stripId < 1) {
+      return res.status(400).json({ error: 'A strip is required' });
+    }
+    if (action !== 'approve' && action !== 'reject') {
+      return res.status(400).json({ error: 'Action must be approve or reject' });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, user_id, event_id, spotlight_opt_in, spotlight_status
+       FROM strips WHERE id = ? LIMIT 1`,
+      [stripId]
+    );
+    const strip = rows[0];
+    if (!strip || strip.event_id != null || !strip.user_id || !strip.spotlight_opt_in) {
+      return res.status(404).json({ error: 'Spotlight submission not found' });
+    }
+    if (strip.spotlight_status !== 'pending') {
+      return res.status(409).json({ error: 'That strip is not waiting for review' });
+    }
+
+    if (action === 'reject') {
+      await pool.query(
+        `UPDATE strips
+         SET spotlight_opt_in = 0, spotlight_status = 'rejected', spotlight_week_start = NULL
+         WHERE id = ?`,
+        [strip.id]
+      );
+      await pool.query('DELETE FROM spotlight_picks WHERE strip_id = ?', [strip.id]);
+      await pool.query('DELETE FROM spotlight_likes WHERE strip_id = ?', [strip.id]);
+      return res.json({ ok: true, stripId: strip.id, spotlightStatus: 'rejected' });
+    }
+
+    const tz = await getSpotlightTz();
+    const weekKey = weekStartKey(new Date(), tz);
+    await pool.query(
+      `UPDATE strips
+       SET spotlight_status = 'approved', spotlight_week_start = ?
+       WHERE id = ?`,
+      [weekKey, strip.id]
+    );
+    res.json({ ok: true, stripId: strip.id, spotlightStatus: 'approved', weekStart: weekKey });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to review Spotlight submission' });
   }
 });
 
@@ -765,13 +838,19 @@ router.post('/spotlight', async (req, res) => {
     }
 
     const [strips] = await pool.query(
-      `SELECT id, user_id, event_id, spotlight_opt_in
+      `SELECT id, user_id, event_id, spotlight_opt_in, spotlight_status
        FROM strips WHERE id = ? LIMIT 1`,
       [stripId]
     );
     const strip = strips[0];
-    if (!strip || strip.event_id != null || !strip.user_id || !strip.spotlight_opt_in) {
-      return res.status(400).json({ error: 'Only an allowed personal strip can be featured' });
+    if (
+      !strip ||
+      strip.event_id != null ||
+      !strip.user_id ||
+      !strip.spotlight_opt_in ||
+      strip.spotlight_status !== 'approved'
+    ) {
+      return res.status(400).json({ error: 'Only an approved personal strip can be featured' });
     }
 
     if (slot === 'week') {

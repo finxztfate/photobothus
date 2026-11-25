@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { filterPresets } from '../data/photoboothData';
 import './Faq.css';
 
@@ -9,8 +10,9 @@ const FAQS = [
     question: 'Is Photobothus free to use?',
     answer: (
       <p>
-        Yes. Open the booth, take your shots, customize your strip and download it — no
-        account, no installs, no watermark.
+        The personal booth is free — open it, shoot, customize, and download with no account and
+        no watermark. Hosted events use an event ticket (buy when checkout is open, or earn via
+        Spotlight). Guests never pay to use an event booth.
       </p>
     ),
   },
@@ -18,27 +20,26 @@ const FAQS = [
     question: 'Does it work on mobile?',
     answer: (
       <p>
-        It does. The booth runs in any modern mobile browser, in portrait or landscape, and
-        you can switch between your front and back camera.
+        Yes. It runs in any modern mobile browser, portrait or landscape, and you can switch
+        between front and back camera.
       </p>
     ),
   },
   {
-    question: 'Are my photos stored in your servers?',
+    question: 'Are my photos stored on your servers?',
     answer: (
       <p>
-        No. Photos taken in the booth are processed right in your browser and stay on your
-        device. They only leave it if you choose to save a strip to your Photobothus account or
-        upload it to an event booth.
+        Booth shots stay in your browser unless you save a strip to your account gallery or upload
+        to a hosted event. Saved and event photos are stored securely (encrypted when configured).
+        See our <Link to="/privacy">Privacy Policy</Link> for details.
       </p>
     ),
   },
   {
-    question: 'Can I actually print the photos?',
+    question: 'Can I print the photos?',
     answer: (
       <p>
-        Absolutely. Downloads are high-resolution, print-ready files — take them to any print
-        shop or print them at home.
+        Yes. Downloads are high-resolution, print-ready files — print at home or any print shop.
       </p>
     ),
   },
@@ -46,9 +47,45 @@ const FAQS = [
     question: 'Can I customize the photo strips?',
     answer: (
       <p>
-        Yes. Pick from 2, 3, 4 or 6-frame layouts, then change the strip background and
-        border color (including custom colors), add stickers and stamp the date before you
-        download.
+        Yes. Choose a layout, change background and border colors (including custom colors), add
+        stickers, and stamp the date before you download. Event hosts can also set a strip look
+        and which layouts guests may use.
+      </p>
+    ),
+  },
+  {
+    question: 'How do hosted events work?',
+    answer: (
+      <>
+        <p>
+          Sign in, spend one event ticket, create the event, then share the link or QR. Guests open
+          the booth on their phones; strips land in your event gallery. You pick the schedule,
+          welcome message, layouts, and strip look.
+        </p>
+        <p>
+          Each guest can upload up to 2 strips. Each event holds up to 30 strips total. Choosing
+          only some layouts (instead of all) can raise how many strips fit the same storage budget.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: 'What are event tickets?',
+    answer: (
+      <p>
+        One ticket = one hosted event. When checkout is available, you can buy packs on the{' '}
+        <Link to="/tickets">Tickets</Link> page. You can also earn tickets through Spotlight Photo
+        of the Week wins (rules are listed there). Tickets sit on your account until you use them.
+      </p>
+    ),
+  },
+  {
+    question: 'What is Spotlight?',
+    answer: (
+      <p>
+        Spotlight is our community showcase. Submit a personal gallery strip for review; after
+        approval it competes for Photo of the Week — wins can earn event tickets. Browse entries on
+        the <Link to="/spotlight">Spotlight</Link> page when it is enabled.
       </p>
     ),
   },
@@ -57,14 +94,14 @@ const FAQS = [
     answer: (
       <>
         <p>
-          The feed stays black until you allow camera access — that part is intentional. If
-          it's still black after allowing it, your system may be blocking the camera.
+          The feed stays black until you allow camera access. If it is still black after allowing
+          it, your system may be blocking the camera.
         </p>
         <ol className="faq-steps">
-          <li>Check your browser's site settings and allow the camera for Photobothus.</li>
+          <li>Check your browser site settings and allow the camera for Photobothus.</li>
           <li>
-            On Windows, go to Settings → Privacy &amp; Security → Camera and turn on camera
-            access for apps and desktop apps.
+            On Windows, go to Settings → Privacy &amp; Security → Camera and turn on camera access
+            for apps and desktop apps.
           </li>
           <li>Close other apps that might be using the camera, then refresh the page.</li>
         </ol>
@@ -72,20 +109,21 @@ const FAQS = [
     ),
   },
   {
-    question: 'Can I use this for events?',
+    question: 'What filters are there?',
     answer: (
       <p>
-        Yes. Create an event from your account and share its link or code — guests open the
-        booth on their own phones and every strip lands in your event gallery.
+        Every filter is vintage-inspired: {FILTER_NAMES}. Pick one before you shoot or upload, and
+        it is baked into your strip.
       </p>
     ),
   },
   {
-    question: 'What filters are there?',
+    question: 'Do you use cookies?',
     answer: (
       <p>
-        Every filter is vintage-inspired: {FILTER_NAMES}. Pick one before you shoot or
-        upload, and it's baked right into your strip.
+        Yes — mainly to keep you signed in and remember preferences like theme and cookie consent.
+        Details are in our <Link to="/privacy">Privacy Policy</Link> and{' '}
+        <Link to="/terms">Terms of Use</Link>.
       </p>
     ),
   },

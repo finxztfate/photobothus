@@ -4,7 +4,13 @@ import { useAuth } from '../utils/auth';
 
 const MAX_BUTTON_WIDTH = 352;
 
-function GoogleSignInButton({ mode = 'login', onSuccessNavigate, onError }) {
+function GoogleSignInButton({
+  mode = 'login',
+  onSuccessNavigate,
+  onError,
+  disabled = false,
+  acceptTerms = false,
+}) {
   const { loginWithGoogle } = useAuth();
   const wrapRef = useRef(null);
   const [buttonWidth, setButtonWidth] = useState(MAX_BUTTON_WIDTH);
@@ -32,7 +38,11 @@ function GoogleSignInButton({ mode = 'login', onSuccessNavigate, onError }) {
   }
 
   return (
-    <div className={`google-btn-wrap${busy ? ' is-busy' : ''}`} ref={wrapRef} aria-busy={busy}>
+    <div
+      className={`google-btn-wrap${busy ? ' is-busy' : ''}`}
+      ref={wrapRef}
+      aria-busy={busy}
+    >
       {busy && (
         <div className="google-btn-loading" role="status">
           <span className="auth-spinner" aria-hidden="true" />
@@ -42,10 +52,16 @@ function GoogleSignInButton({ mode = 'login', onSuccessNavigate, onError }) {
       <GoogleLogin
         key={buttonWidth}
         onSuccess={async (response) => {
+          if (disabled) {
+            onError?.('Agree to the Terms of Use and Privacy Policy to continue.');
+            return;
+          }
           setBusy(true);
           onError?.('');
           try {
-            const user = await loginWithGoogle(response.credential, mode);
+            const user = await loginWithGoogle(response.credential, mode, {
+              acceptTerms: mode === 'signup' ? acceptTerms : undefined,
+            });
             onSuccessNavigate?.(user);
           } catch (err) {
             setBusy(false);
@@ -61,6 +77,7 @@ function GoogleSignInButton({ mode = 'login', onSuccessNavigate, onError }) {
         size="large"
         text={mode === 'signup' ? 'signup_with' : 'signin_with'}
         shape="rectangular"
+        locale="en"
         width={String(buttonWidth)}
       />
     </div>

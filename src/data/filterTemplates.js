@@ -2,6 +2,8 @@ export {
   STRIP_LAYOUTS,
   layouts,
   getLayoutById,
+  getPublicLayouts,
+  isPublicLayout,
   resolveLayoutId,
   getLayoutPhotoCount,
   getLayoutCssClass,

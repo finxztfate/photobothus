@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './CookieConsent.css';
 
 const STORAGE_KEY = 'photobothus_cookie_consent';
@@ -29,7 +30,8 @@ function CookieConsent() {
   return (
     <div className="cookie-consent" role="dialog" aria-label="Cookie notice">
       <p>
-        We use cookies and similar storage to keep you signed in and remember basic site preferences.
+        We use cookies and similar storage to keep you signed in and remember basic site preferences.{' '}
+        <Link to="/privacy">Privacy</Link>
       </p>
       <button type="button" className="cookie-consent-accept" onClick={accept}>
         Accept

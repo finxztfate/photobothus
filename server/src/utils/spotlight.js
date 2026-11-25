@@ -73,6 +73,7 @@ const PUBLIC_PICKS_SQL = `SELECT p.id AS pick_id, p.slot, p.caption, s.id, s.use
      JOIN strips s ON s.id = p.strip_id
      JOIN users u ON u.id = s.user_id
      WHERE s.event_id IS NULL AND s.user_id IS NOT NULL
+       AND s.spotlight_status = 'approved'
        AND (p.slot = 'week' OR s.spotlight_opt_in = 1)
      ORDER BY p.id ASC`;
 
@@ -81,7 +82,8 @@ const ENTRIES_SQL = `SELECT s.id, s.user_id, s.title, s.image_url, s.layout_id, 
      FROM strips s
      JOIN users u ON u.id = s.user_id
      LEFT JOIN spotlight_likes l ON l.strip_id = s.id AND l.week_start = ?
-     WHERE s.spotlight_opt_in = 1 AND s.event_id IS NULL AND s.user_id IS NOT NULL
+     WHERE s.spotlight_opt_in = 1 AND s.spotlight_status = 'approved'
+       AND s.event_id IS NULL AND s.user_id IS NOT NULL
        AND s.spotlight_week_start = ?
      GROUP BY s.id, s.user_id, s.title, s.image_url, s.layout_id, s.photo_urls, s.look_json,
               s.spotlight_details, s.created_at, u.display_name
@@ -93,6 +95,8 @@ const WINNER_SQL = `SELECT l.strip_id AS id, COUNT(*) AS likes, MIN(l.created_at
      WHERE l.week_start = ?
        AND s.event_id IS NULL
        AND s.user_id IS NOT NULL
+       AND s.spotlight_opt_in = 1
+       AND s.spotlight_status = 'approved'
      GROUP BY l.strip_id
      ORDER BY likes DESC, first_like ASC, l.strip_id ASC
      LIMIT 1`;
@@ -118,11 +122,13 @@ async function toPublicItem(row, extra = {}) {
 }
 
 async function expireStaleEntries(weekKey) {
+  // Only drop entries from earlier contest weeks. Pending review keeps
+  // spotlight_week_start NULL until approval, so do not treat NULL as stale.
   await pool.query(
     `UPDATE strips
-     SET spotlight_opt_in = 0, spotlight_week_start = NULL
-     WHERE event_id IS NULL AND spotlight_opt_in = 1
-       AND (spotlight_week_start IS NULL OR spotlight_week_start < ?)`,
+     SET spotlight_opt_in = 0, spotlight_status = 'none', spotlight_week_start = NULL
+     WHERE event_id IS NULL AND spotlight_opt_in = 1 AND spotlight_status = 'approved'
+       AND spotlight_week_start IS NOT NULL AND spotlight_week_start < ?`,
     [weekKey]
   );
 }

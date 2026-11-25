@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Camera from '../components/Camera';
 import LayoutPreview from '../components/LayoutPreview';
 import { getAvailableCameras, getFilterFrame } from '../data/photoboothData';
-import { getLayoutById, getLayoutPhotoCount, resolveLayoutId } from '../data/filterTemplates';
+import { getLayoutById, getLayoutPhotoCount, isPublicLayout, resolveLayoutId } from '../data/filterTemplates';
 import { enterMobileFullscreen } from '../utils/mobileFullscreen';
 import './events/guest/EventPhotobooth.css';
 
@@ -30,7 +30,8 @@ function liveFilterLabel(id) {
 function PhotoboothMobile() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const layout = resolveLayoutId(searchParams.get('layout') || 1);
+  const requestedLayout = resolveLayoutId(searchParams.get('layout') || 1);
+  const layout = isPublicLayout(requestedLayout) ? requestedLayout : 1;
   const layoutMeta = getLayoutById(layout);
   const slotCount = getLayoutPhotoCount(layout);
 

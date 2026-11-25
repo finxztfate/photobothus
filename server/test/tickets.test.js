@@ -69,10 +69,16 @@ test('admin can grant a purchased ticket pack', async () => {
 });
 
 test('three Photo of the Week wins grant one event ticket', async () => {
-  const { previousWeekStartKey, WEEK_WIN_MIN_LIKES } = require('../src/utils/spotlight');
+  const { previousWeekStartKey, weekStartKey, WEEK_WIN_MIN_LIKES } = require('../src/utils/spotlight');
   const winner = app.db.addUser({ email: 'potw-star@x.com', event_tickets: 0, potw_wins: 0 });
-  const strip = app.db.addStrip({ user_id: winner.id, title: 'Winning strip', spotlight_opt_in: 1 });
   const prevWeek = previousWeekStartKey(new Date());
+  const strip = app.db.addStrip({
+    user_id: winner.id,
+    title: 'Winning strip',
+    spotlight_opt_in: 1,
+    spotlight_status: 'approved',
+    spotlight_week_start: weekStartKey(new Date()),
+  });
 
   function ageWeekPick() {
     app.db.tables.picks

@@ -10,8 +10,6 @@ import { useAuth } from '../utils/auth';
 import BackgroundStripPicker from '../components/BackgroundStripPicker';
 import DateStampControls, { normalizeDatePlacement, DEFAULT_DATE_FONT } from '../components/DateStampControls';
 import DraggableStripPreview from '../components/DraggableStripPreview';
-import CustomFrameModal from '../components/CustomFrameModal';
-import { enterMobileFullscreen } from '../utils/mobileFullscreen';
 import {
   IconDownload,
   IconPrint,
@@ -98,10 +96,6 @@ function EditPage() {
   });
   const [strip, setStrip] = useState(() => (fromBooth ? null : saved?.stripImageData || null));
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
-  const [customFramePreview, setCustomFramePreview] = useState(null);
-  const [previewStrip, setPreviewStrip] = useState(null);
-  const [isPreviewGenerating, setIsPreviewGenerating] = useState(false);
   const [error, setError] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -258,40 +252,6 @@ function EditPage() {
     }
   }, [sync]);
 
-  const generatePreviewStrip = useCallback(async (previewBg) => {
-    if (isPreviewGenerating || capturedPhotos.length === 0) return;
-    setIsPreviewGenerating(true);
-    try {
-      const dataUrl = await renderStripToCanvas({
-        layoutId: layout,
-        photos: capturedPhotos,
-        customBg: previewBg,
-        customBorder: '#ffffff',
-        showDate,
-        dateSize,
-        dateColor,
-        dateX,
-        dateY,
-        dateFont,
-      });
-      setPreviewStrip(dataUrl);
-    } catch (err) {
-      setError(err.message || 'Failed to generate preview');
-    } finally {
-      setIsPreviewGenerating(false);
-    }
-  }, [capturedPhotos, layout, showDate, dateSize, dateColor, dateX, dateY, dateFont, isPreviewGenerating]);
-
-  useEffect(() => {
-    if (customFramePreview && capturedPhotos.length > 0) {
-      generatePreviewStrip(customFramePreview).then(() => {
-        /* preview state updated inside generatePreviewStrip */
-      });
-    } else {
-      setPreviewStrip(null);
-    }
-  }, [customFramePreview, capturedPhotos.length, generatePreviewStrip]);
-
   const handleSaveStrip = async () => {
     await trackDataAction(async () => {
       setIsExporting(true);
@@ -353,29 +313,6 @@ function EditPage() {
     navigate(`/photobooth?layout=${getLayoutById(layout)?.slug || layout}`);
   };
 
-  useEffect(() => {
-    if (!isCustomModalOpen) return undefined;
-    const onKeyDown = (event) => {
-      if (event.key !== 'Escape') return;
-      setIsCustomModalOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isCustomModalOpen]);
-
-  const applyCustomFrame = () => {
-    if (customFramePreview) {
-      setCustomBg(customFramePreview);
-      setCustomBorder('#ffffff');
-      setPreviewStrip(null);
-      customization.setBackground(customFramePreview);
-      customization.setBorder('#ffffff');
-      resetGeneratedStrip({ customBg: customFramePreview, customBorder: '#ffffff' });
-      setCustomFramePreview(null);
-      setIsCustomModalOpen(false);
-    }
-  };
-
   const layoutName = getLayoutById(layout)?.name || 'Classic Strip';
 
   const handleBackgroundSelect = (value, borderValue) => {
@@ -428,17 +365,6 @@ function EditPage() {
           Close <span aria-hidden="true">✕</span>
         </button>
       </header>
-
-      {isCustomModalOpen && (
-        <CustomFrameModal
-          layoutId={layout}
-          previewStrip={previewStrip}
-          canApply={Boolean(customFramePreview)}
-          onSelect={setCustomFramePreview}
-          onApply={applyCustomFrame}
-          onClose={() => setIsCustomModalOpen(false)}
-        />
-      )}
 
       <div className="edit-body">
         <section className="edit-result edit-stage" aria-label="Your strip">
@@ -533,22 +459,6 @@ function EditPage() {
               }}
             />
 
-            <div className="edit-panel edit-panel--custom-row">
-              <div className="edit-custom-row-text">
-                <h4>Custom frame</h4>
-                <p>Use your own PNG artwork as the strip background.</p>
-              </div>
-              <button
-                type="button"
-                className="edit-outline-btn"
-                onClick={() => {
-                  setIsCustomModalOpen(true);
-                  enterMobileFullscreen();
-                }}
-              >
-                Upload
-              </button>
-            </div>
           </div>
 
           <div className="edit-actions">

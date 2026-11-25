@@ -10,7 +10,8 @@ router.use(requireAuth);
 async function eligibleStrip(stripId, weekKey) {
   const [rows] = await pool.query(
     `SELECT id FROM strips
-     WHERE id = ? AND spotlight_opt_in = 1 AND event_id IS NULL AND user_id IS NOT NULL
+     WHERE id = ? AND spotlight_opt_in = 1 AND spotlight_status = 'approved'
+       AND event_id IS NULL AND user_id IS NOT NULL
        AND spotlight_week_start = ?
      LIMIT 1`,
     [stripId, weekKey]

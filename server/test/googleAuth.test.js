@@ -66,9 +66,21 @@ test('Google login does not create an account', async () => {
   );
 });
 
+test('Google signup requires accepting terms', async () => {
+  const refused = await app.api('POST', '/api/auth/google', {
+    body: { credential: 'token-new', mode: 'signup' },
+  });
+  assert.equal(refused.status, 400);
+  assert.match(refused.body.error, /terms of use and privacy policy/i);
+  assert.equal(
+    app.db.tables.users.some((user) => user.email === 'new@gmail.com'),
+    false
+  );
+});
+
 test('Google signup creates an account, then login works', async () => {
   const created = await app.api('POST', '/api/auth/google', {
-    body: { credential: 'token-new', mode: 'signup' },
+    body: { credential: 'token-new', mode: 'signup', acceptTerms: true },
   });
   assert.equal(created.status, 200);
   assert.equal(created.body.user.email, 'new@gmail.com');
@@ -76,7 +88,7 @@ test('Google signup creates an account, then login works', async () => {
   assert.ok(created.body.token);
 
   const again = await app.api('POST', '/api/auth/google', {
-    body: { credential: 'token-new', mode: 'signup' },
+    body: { credential: 'token-new', mode: 'signup', acceptTerms: true },
   });
   assert.equal(again.status, 409);
   assert.match(again.body.error, /already has a Photobothus account/i);

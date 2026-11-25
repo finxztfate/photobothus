@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS strips (
   photo_urls TEXT DEFAULT NULL,
   look_json TEXT DEFAULT NULL,
   spotlight_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+  spotlight_status VARCHAR(16) NOT NULL DEFAULT 'none',
   spotlight_details TEXT DEFAULT NULL,
   spotlight_week_start DATE DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

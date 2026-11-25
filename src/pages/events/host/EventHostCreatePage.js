@@ -130,8 +130,9 @@ function EventHostCreatePage() {
         <p className="auth-kicker">Event dashboard</p>
         <h1>New event</h1>
         {!quota.tickets ? (
-          <p className="auth-hint">
-            You need a ticket to create an event. <Link to="/tickets">Buy tickets</Link>
+          <p className="event-ticket-needed">
+            You need a ticket to create an event.{' '}
+            <Link to="/tickets">Buy tickets</Link>
           </p>
         ) : null}
         {error && <p className="auth-error">{error}</p>}

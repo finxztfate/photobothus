@@ -7,6 +7,10 @@ function SiteFooter() {
       <Link to="/" className="site-footer-brand">
         Photobooth.us
       </Link>
+      <nav className="site-footer-links" aria-label="Legal">
+        <Link to="/terms">Terms</Link>
+        <Link to="/privacy">Privacy</Link>
+      </nav>
     </footer>
   );
 }

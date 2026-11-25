@@ -65,6 +65,8 @@ app.use(
     // that do not break inline CRA styles or the camera booth.
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
+    // Helmet's default COOP (same-origin) blanks the Google sign-in popup.
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   })
 );
 app.use(compression());

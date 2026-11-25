@@ -25,11 +25,26 @@ const DETAILS = {
   social: 'avery.shots',
 };
 
-function allow(stripId, as = owner) {
+async function submit(stripId, as = owner) {
   return app.api('PATCH', `/api/strips/${stripId}`, {
     as,
     body: { spotlightOptIn: true, details: DETAILS },
   });
+}
+
+async function approve(stripId) {
+  return app.api('POST', '/api/admin/spotlight/review', {
+    as: admin,
+    body: { stripId, action: 'approve' },
+  });
+}
+
+async function allow(stripId, as = owner) {
+  const submitted = await submit(stripId, as);
+  if (submitted.status !== 200) return submitted;
+  const reviewed = await approve(stripId);
+  assert.equal(reviewed.status, 200);
+  return submitted;
 }
 
 async function optOutAll(user) {
@@ -53,12 +68,49 @@ test('a signed-in customer can allow their own personal strip on Spotlight', asy
   const allowed = await allow(strip.id);
   assert.equal(allowed.status, 200);
   assert.equal(allowed.body.spotlightOptIn, true);
+  assert.equal(allowed.body.spotlightStatus, 'pending');
   assert.equal(allowed.body.spotlightDetails.quote, DETAILS.quote);
 
   const listed = await app.api('GET', '/api/strips', { as: owner });
   const saved = listed.body.strips.find((item) => item.id === strip.id);
   assert.equal(saved.spotlightOptIn, true);
+  assert.equal(saved.spotlightStatus, 'approved');
   assert.equal(saved.spotlightDetails.location, DETAILS.location);
+});
+
+test('Spotlight submissions stay private until an admin approves them', async () => {
+  await optOutAll(owner);
+  const strip = app.db.addStrip({ user_id: owner.id, title: 'Needs review' });
+  const submitted = await submit(strip.id);
+  assert.equal(submitted.status, 200);
+  assert.equal(submitted.body.spotlightStatus, 'pending');
+
+  const before = await app.api('GET', '/api/public/spotlight');
+  assert.equal(before.body.entries.some((item) => item.stripId === strip.id), false);
+
+  const liked = await app.api('POST', '/api/spotlight/likes', { as: other, body: { stripId: strip.id } });
+  assert.equal(liked.status, 404);
+
+  const approved = await approve(strip.id);
+  assert.equal(approved.status, 200);
+  assert.equal(approved.body.spotlightStatus, 'approved');
+
+  const after = await app.api('GET', '/api/public/spotlight');
+  assert.equal(after.body.entries.some((item) => item.stripId === strip.id), true);
+
+  await optOutAll(owner);
+  const again = app.db.addStrip({ user_id: owner.id, title: 'Rejected shot' });
+  await submit(again.id);
+  const rejected = await app.api('POST', '/api/admin/spotlight/review', {
+    as: admin,
+    body: { stripId: again.id, action: 'reject' },
+  });
+  assert.equal(rejected.status, 200);
+  assert.equal(rejected.body.spotlightStatus, 'rejected');
+  assert.equal(again.spotlight_opt_in, 0);
+
+  const hidden = await app.api('GET', '/api/public/spotlight');
+  assert.equal(hidden.body.entries.some((item) => item.stripId === again.id), false);
 });
 
 test('another customer cannot opt in a strip, and an event strip cannot be opted in', async () => {
@@ -152,8 +204,10 @@ function ageWeekPick() {
 
 test('a week pick is empty without 10 likes, and 10 likes crown the new week', async () => {
   const { previousWeekStartKey, WEEK_WIN_MIN_LIKES } = require('../src/utils/spotlight');
-  const next = app.db.addStrip({ user_id: other.id, title: 'Voted strip', layout_id: 2 });
-  await allow(next.id, other);
+  await optOutAll(other);
+  const voterHost = app.db.addUser({ email: 'voter-host@x.com', display_name: 'VoterHost' });
+  const next = app.db.addStrip({ user_id: voterHost.id, title: 'Voted strip', layout_id: 2 });
+  await allow(next.id, voterHost);
   const prevWeek = previousWeekStartKey(new Date());
 
   ageWeekPick();

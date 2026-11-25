@@ -9,6 +9,8 @@ import Layout from './pages/Layout';
 import EditPage from './pages/EditPage';
 import About from './pages/About';
 import Faq from './pages/Faq';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Welcome from './pages/Welcome';
@@ -115,6 +117,8 @@ function App() {
                   <Route path="/layouts" element={<SitePage className="page-layout" {...navProps}><Layout /></SitePage>} />
                   <Route path="/about" element={<SitePage className="page-about" {...navProps}><About /></SitePage>} />
                   <Route path="/faq" element={<SitePage className="page-faq" {...navProps}><Faq /></SitePage>} />
+                  <Route path="/terms" element={<SitePage className="page-legal" {...navProps}><Terms /></SitePage>} />
+                  <Route path="/privacy" element={<SitePage className="page-legal" {...navProps}><Privacy /></SitePage>} />
                   <Route path="/login" element={<SitePage className="page-home" {...navProps}><Login /></SitePage>} />
                   <Route path="/signup" element={<SitePage className="page-home" {...navProps}><Signup /></SitePage>} />
                   <Route path="/welcome" element={<SitePage className="page-home" {...navProps}><Welcome /></SitePage>} />

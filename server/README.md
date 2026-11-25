@@ -17,7 +17,7 @@
 
 ## Google customer auth
 1. Create an OAuth Client ID (Web) in Google Cloud Console.
-2. Add authorized JavaScript origins: `http://localhost:3000`
+2. Add authorized JavaScript origins: both `http://localhost` and `http://localhost:3000` (a blank white Google popup usually means an origin is missing)
 3. Set the same Client ID in:
    - `server/.env` → `GOOGLE_CLIENT_ID=...`
    - project `.env` (copy `.env.example`) → `REACT_APP_GOOGLE_CLIENT_ID=...`

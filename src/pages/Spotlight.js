@@ -290,7 +290,7 @@ function Spotlight() {
           when the new week starts.
         </p>
         {error && feature ? <p className="spot-empty">{error}</p> : null}
-        <div className="spot-contest-grid">
+        <div className="spot-contest-grid spot-contest-mosaic">
           {entries.map((item) => (
             <article key={item.stripId} className="spot-entry">
               <StripFrame compact item={item} label={item.title || 'Spotlight entry'} />
