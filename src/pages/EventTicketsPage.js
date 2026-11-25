@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../data/siteContact';
 import { apiRequest } from '../utils/api';
 import { useAuth } from '../utils/auth';
 import './EventTicketsPage.css';
@@ -145,7 +146,7 @@ function EventTicketsPage() {
   const checkoutNotice =
     shop && !checkoutEnabled
       ? (shop.checkoutMessage
-        || 'Online ticket checkout is not available yet. Earn tickets from Spotlight, or ask an admin to issue tickets.')
+        || `Online ticket checkout is not available yet. Earn tickets from Spotlight, or email ${CONTACT_EMAIL} for a grant.`)
       : '';
 
   return (
@@ -209,6 +210,15 @@ function EventTicketsPage() {
           );
         })}
       </div>
+      <section className="ticket-pricing-contact" aria-label="Contact admin">
+        <p className="ticket-pricing-contact-kicker">Need tickets from an admin?</p>
+        <p className="ticket-pricing-contact-text">
+          Email the admin for ticket issues or manual grants.
+        </p>
+        <a className="ticket-pricing-contact-link" href={CONTACT_MAILTO}>
+          {CONTACT_EMAIL}
+        </a>
+      </section>
       <p className="ticket-pricing-foot">
         <Link to="/events/new">Create an event</Link>
         {' · '}

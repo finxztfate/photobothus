@@ -7,7 +7,7 @@ import { EventHostDashLayout } from './components/EventHostSidebar';
 import './EventHostListPage.css';
 
 function EventHostListPage() {
-  const { isAuthenticated, isCustomer, loading, user } = useAuth();
+  const { isAuthenticated, isCustomer, loading } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [canCreate, setCanCreate] = useState(true);
@@ -60,32 +60,27 @@ function EventHostListPage() {
           <div>
             <p className="hub-kicker">Event Dashboard</p>
             <h1>Your events</h1>
-            <p>
-              Welcome{user?.displayName ? `, ${user.displayName}` : ''}.
-              Run a live booth, then open completed events when guest photos unlock.
-              {!canCreate ? ' Event creation is currently off.' : ''}
-            </p>
           </div>
         </header>
 
         {error && <p className="events-error">{error}</p>}
 
-        <section className="hub-stats">
+        <section className="hub-stats" aria-label="Event summary">
           <div className="hub-stat">
             <strong>{activeEvents.length}</strong>
-            <span>Active events</span>
+            <span>Live</span>
           </div>
           <div className="hub-stat">
             <strong>{historyEvents.length}</strong>
             <span>Completed</span>
           </div>
           <div className="hub-stat">
-            <strong>{events.length}</strong>
-            <span>Total events</span>
+            <strong>{totalStrips}</strong>
+            <span>Photos</span>
           </div>
           <div className="hub-stat">
-            <strong>{totalStrips}</strong>
-            <span>Photos collected</span>
+            <strong>{events.length}</strong>
+            <span>Total</span>
           </div>
         </section>
 
@@ -101,18 +96,12 @@ function EventHostListPage() {
           </div>
         ) : (
           <div className="hub-sections">
-            <section>
-              <div className="hub-section-head">
-                <h2>Live</h2>
-                <span>{activeEvents.length}</span>
-              </div>
-              {activeEvents.length === 0 ? (
-                <p className="hub-panel-empty">
-                  {canCreate
-                    ? 'Nothing live right now. Create an event to open the guest booth.'
-                    : 'Nothing live right now.'}
-                </p>
-              ) : (
+            {activeEvents.length > 0 ? (
+              <section>
+                <div className="hub-section-head">
+                  <h2>Live</h2>
+                  <span>{activeEvents.length}</span>
+                </div>
                 <div className="hub-event-list">
                   {activeEvents.map((event) => (
                     <EventHostListCard
@@ -122,8 +111,8 @@ function EventHostListPage() {
                     />
                   ))}
                 </div>
-              )}
-            </section>
+              </section>
+            ) : null}
 
             <section>
               <div className="hub-section-head">

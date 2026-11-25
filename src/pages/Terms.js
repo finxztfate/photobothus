@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../data/siteContact';
 import './Legal.css';
 
 function Terms() {
@@ -111,10 +112,8 @@ function Terms() {
       <section>
         <h2>11. Contact</h2>
         <p>
-          Questions about these Terms: message us on Instagram at{' '}
-          <a href="https://ig.me/m/photobothus" target="_blank" rel="noopener noreferrer">
-            @photobothus
-          </a>
+          Questions about these Terms: email{' '}
+          <a href={CONTACT_MAILTO}>{CONTACT_EMAIL}</a>
           .
         </p>
       </section>
@@ -122,7 +121,6 @@ function Terms() {
       <div className="legal-links">
         <Link to="/privacy">Privacy Policy</Link>
         <Link to="/faq">FAQ</Link>
-        <Link to="/">Home</Link>
       </div>
     </div>
   );

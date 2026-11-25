@@ -3,6 +3,7 @@ export {
   layouts,
   getLayoutById,
   getPublicLayouts,
+  getEventExclusiveLayouts,
   isPublicLayout,
   resolveLayoutId,
   getLayoutPhotoCount,

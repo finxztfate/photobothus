@@ -149,6 +149,19 @@ async function ensureSpotlightLikes(connection, database) {
   }
 }
 
+async function ensureFeedbackTable(connection, database) {
+  const [tables] = await connection.query(
+    `SELECT 1 FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'feedback' LIMIT 1`,
+    [database]
+  );
+  if (!tables.length) {
+    const sql = fs.readFileSync(path.join(__dirname, '..', 'sql', 'migrate_feedback.sql'), 'utf8');
+    await connection.query(sql);
+    console.log('Added feedback table');
+  }
+}
+
 async function main() {
   const schema = fs
     .readFileSync(schemaPath, 'utf8')
@@ -166,6 +179,7 @@ async function main() {
     await ensureStripSessionColumns(connection, config.database);
     await ensureSpotlightLikes(connection, config.database);
     await ensureEventTickets(connection, config.database);
+    await ensureFeedbackTable(connection, config.database);
 
     // Only replaces the public default, so a password changed later in admin settings is kept.
     if (process.env.ADMIN_PASSWORD) {

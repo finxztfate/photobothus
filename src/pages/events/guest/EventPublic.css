@@ -79,7 +79,7 @@
 }
 
 .event-public-when {
-  min-width: 12rem;
+  min-width: 0;
 }
 
 .event-public-meta:empty {
@@ -112,7 +112,8 @@
 
 .event-public-time {
   margin-top: 6px !important;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .event-public-alert {
@@ -223,7 +224,8 @@
   }
 
   .event-public-meta {
-    gap: 16px 20px;
+    grid-template-columns: 1fr;
+    gap: 16px;
     padding: 20px 0;
   }
 }

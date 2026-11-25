@@ -102,6 +102,7 @@
 .layout-option .layout-preview {
   gap: 10px;
   padding: 12px;
+  box-shadow: none;
 }
 
 .layout-cell {
@@ -170,10 +171,86 @@
   min-height: 56px;
 }
 
+.layouts-exclusive {
+  max-width: var(--layouts-width);
+  margin: 56px auto 0;
+  padding-top: 40px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--border-soft, rgba(255, 255, 255, 0.12)) 90%, transparent);
+  text-align: left;
+}
+
+.layouts-exclusive-head {
+  margin-bottom: 28px;
+}
+
+.layouts-exclusive-kicker {
+  margin: 0 0 8px;
+  font-family: var(--font-subheading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--layouts-accent);
+}
+
+.layouts-exclusive-title {
+  margin: 0 0 10px;
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 600;
+  color: var(--text-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.layouts-exclusive-text {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--text-muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.layouts-mosaic--exclusive {
+  margin-bottom: 0;
+}
+
+.layout-option--exclusive {
+  position: relative;
+  cursor: default;
+  pointer-events: none;
+}
+
+.layout-option--exclusive:hover,
+.layout-option--exclusive:focus-visible {
+  transform: none;
+  border-color: var(--border-card, rgba(255, 255, 255, 0.08));
+}
+
+.layout-option--exclusive .layout-label-cta--link {
+  pointer-events: auto;
+  opacity: 1;
+  transform: none;
+  text-decoration: none;
+}
+
+.layout-exclusive-badge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  padding: 4px 8px;
+  background: rgba(10, 10, 10, 0.82);
+  color: var(--layouts-accent);
+  font-family: var(--font-subheading);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .layout-option.is-selected .layout-preview {
-  box-shadow:
-    0 0 0 3px var(--layouts-accent),
-    0 0 28px 5px rgba(216, 133, 15, 0.42);
+  box-shadow: 0 0 0 2px var(--layouts-accent);
 }
 
 .event-layouts-eyebrow {
@@ -247,6 +324,7 @@
 
 @media (max-width: 480px) {
   .layouts-grid.layouts-mosaic {
-    column-count: 1;
+    column-count: 2;
+    column-gap: 12px;
   }
 }

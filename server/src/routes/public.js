@@ -23,6 +23,44 @@ const publicUploadLimiter = rateLimit({
   message: 'Too many uploads from this network. Please wait a few minutes and try again.',
 });
 
+const feedbackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.FEEDBACK_RATE_MAX || 8),
+  message: 'Too many feedback messages from this network. Please try again later.',
+});
+
+function normalizeFeedbackText(value, max) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+router.post('/feedback', optionalAuth, feedbackLimiter, async (req, res) => {
+  try {
+    const name = normalizeFeedbackText(req.body?.name, 120);
+    const email = normalizeFeedbackText(req.body?.email, 255).toLowerCase();
+    const message = String(req.body?.message || '').trim().slice(0, 4000);
+    if (!name || name.length < 2) {
+      return res.status(400).json({ error: 'Please enter your name.' });
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email.' });
+    }
+    if (!message || message.length < 8) {
+      return res.status(400).json({ error: 'Please write a bit more feedback.' });
+    }
+
+    const userId = req.user?.id || null;
+    const [result] = await pool.query(
+      `INSERT INTO feedback (name, email, message, user_id, status)
+       VALUES (?, ?, ?, ?, 'new')`,
+      [name, email, message, userId]
+    );
+    res.status(201).json({ ok: true, id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to send feedback' });
+  }
+});
+
 router.get('/spotlight', optionalAuth, async (req, res) => {
   try {
     res.json(await loadPublicSpotlight(req.user || null));

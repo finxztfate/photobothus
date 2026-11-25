@@ -916,4 +916,58 @@ router.delete('/spotlight/:id', async (req, res) => {
   }
 });
 
+router.get('/feedback', async (_req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT f.id, f.name, f.email, f.message, f.status, f.created_at, f.user_id,
+              u.display_name AS user_display_name
+       FROM feedback f
+       LEFT JOIN users u ON u.id = f.user_id
+       ORDER BY
+         CASE WHEN f.status = 'new' THEN 0 ELSE 1 END,
+         f.id DESC
+       LIMIT 200`
+    );
+    res.json({
+      feedback: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        message: row.message,
+        status: row.status || 'new',
+        createdAt: row.created_at,
+        userId: row.user_id,
+        userDisplayName: row.user_display_name || null,
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load feedback. Did you run migrate_feedback.sql?' });
+  }
+});
+
+router.post('/feedback/:id/status', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const status = String(req.body?.status || '').trim().toLowerCase();
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid feedback id' });
+    }
+    if (!['new', 'read', 'done'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be new, read, or done' });
+    }
+    const [result] = await pool.query(
+      'UPDATE feedback SET status = ? WHERE id = ?',
+      [status, id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'Feedback not found' });
+    }
+    res.json({ ok: true, id, status });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update feedback' });
+  }
+});
+
 module.exports = router;

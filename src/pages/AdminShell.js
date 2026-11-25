@@ -11,6 +11,7 @@ const NAV = [
   { to: '/admin/users', label: 'Customers' },
   { to: '/admin/events', label: 'Events' },
   { to: '/admin/spotlight', label: 'Spotlight' },
+  { to: '/admin/feedback', label: 'Feedback' },
   { to: '/admin/payments', label: 'Payments' },
 ];
 

@@ -1596,6 +1596,16 @@
   }
 }
 
+@media (max-width: 640px) {
+  .date-segmented {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bg-swatch-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 480px) {
   .edit-page--studio .edit-toolbar {
     padding: 8px 12px;
@@ -1612,6 +1622,7 @@
   }
 
   .bg-swatch-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px 6px;
   }
 

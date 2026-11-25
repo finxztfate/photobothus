@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import SparkleDivider from '../components/SparkleDivider';
+import { CONTACT_EMAIL } from '../data/siteContact';
 import './About.css';
-
-const FEEDBACK_URL = 'https://ig.me/m/photobothus';
 
 function About() {
   const navigate = useNavigate();
@@ -26,16 +25,15 @@ function About() {
           <p>
             Built for speed, simplicity, and creative freedom, it delivers an all-in-one
             experience for making fun, shareable photos online. Users may also request a custom
-            frame by directly messaging our developer.
+            frame by emailing {CONTACT_EMAIL} or sending feedback below.
           </p>
-          <a
+          <button
+            type="button"
             className="about-outline-btn about-feedback-btn"
-            href={FEEDBACK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={() => navigate('/feedback')}
           >
             Any Feedback?
-          </a>
+          </button>
         </div>
 
         <div className="about-polaroids" aria-hidden="true">

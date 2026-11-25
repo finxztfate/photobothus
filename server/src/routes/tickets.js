@@ -28,8 +28,9 @@ function polarConfig() {
   };
 }
 
+const CONTACT_EMAIL = 'finxztfate@gmail.com';
 const CHECKOUT_UNAVAILABLE_MESSAGE =
-  'Online ticket checkout is not available yet. You can still earn tickets from Spotlight, or ask an admin to issue tickets.';
+  `Online ticket checkout is not available yet. You can still earn tickets from Spotlight, or email ${CONTACT_EMAIL} for a grant.`;
 
 function checkoutReady() {
   const polar = polarConfig();
@@ -217,7 +218,7 @@ router.post('/purchase', requireAuth, async (req, res) => {
       ).catch(() => {});
       console.error(err);
       return res.status(502).json({
-        error: 'Checkout could not be started right now. Please try again later, or ask an admin to issue tickets.',
+        error: `Checkout could not be started right now. Please try again later, or email ${CONTACT_EMAIL} for help.`,
         code: 'CHECKOUT_FAILED',
       });
     }

@@ -193,15 +193,20 @@ function Spotlight() {
       ) : error && !feature && !entries.length ? (
         <p className="spot-empty">{error}</p>
       ) : !feature ? (
-        <section className="spot-empty">
-          <p>No photo of the week this round.</p>
-          <p>
-            A strip needs {week?.winMinLikes || 10} hearts to be crowned. If nobody reaches that,
-            this slot stays empty until the next Sunday midnight.
-          </p>
-          <p>
-            <Link to="/gallery">Save a strip to your account</Link> and enter it — one entry per person.
-          </p>
+        <section className="spot-vacant" aria-label="No photo of the week yet">
+          <div className="spot-vacant-strip" aria-hidden="true">
+            <LayoutPreview layout={1} photos={[]} className="spot-vacant-preview" />
+          </div>
+          <div className="spot-vacant-copy">
+            <p className="spot-vacant-kicker">Crown empty</p>
+            <h2 className="spot-vacant-title">No Photo of the Week yet</h2>
+            <p className="spot-vacant-text">
+              Need {week?.winMinLikes || 10} hearts to take the crown. Heart entries below — or submit yours from Gallery.
+            </p>
+            <Link className="spot-vacant-cta" to={isAuthenticated ? '/gallery' : '/layouts'}>
+              {isAuthenticated ? 'Enter from Gallery' : 'Start a strip'}
+            </Link>
+          </div>
         </section>
       ) : (
         <>
@@ -283,11 +288,9 @@ function Spotlight() {
         <div className="spot-contest-panel">
         <h2 className="spot-contest-title" id="spot-contest-title">This week’s entries</h2>
         <p className="spot-contest-text">
-          Heart the strips you love. Voting closes Saturday at midnight
-          {week?.tz ? ` (${week.tz})` : ''}. A strip needs {week?.winMinLikes || 10} hearts
-          to be Photo of the Week; otherwise the slot stays empty until the next update.
-          Winner is crowned {endsLabel}. One entry per person — last week’s entries clear
-          when the new week starts.
+          Heart your favorites — voting ends Saturday midnight
+          {week?.tz ? ` (${week.tz})` : ''}. Need {week?.winMinLikes || 10} hearts to win;
+          crowned {endsLabel}. One entry each; the board resets weekly.
         </p>
         {error && feature ? <p className="spot-empty">{error}</p> : null}
         <div className="spot-contest-grid spot-contest-mosaic">
@@ -319,7 +322,16 @@ function Spotlight() {
           ))}
         </div>
         {!entries.length && !loading && (
-          <p className="spot-empty">No entries this week yet.</p>
+          <div className="spot-entries-empty" role="status">
+            <div className="spot-entries-empty-mark" aria-hidden="true">♡</div>
+            <h3 className="spot-entries-empty-title">The board is quiet</h3>
+            <p className="spot-entries-empty-text">
+              No strips in this week’s race yet. Be the first — one entry per person.
+            </p>
+            <Link className="spot-vacant-cta spot-vacant-cta--compact" to={isAuthenticated ? '/gallery' : '/login'}>
+              {isAuthenticated ? 'Submit an entry' : 'Log in to enter'}
+            </Link>
+          </div>
         )}
         </div>
       </section>

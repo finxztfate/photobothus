@@ -41,10 +41,15 @@
 }
 
 .ticket-pricing-error {
-  max-width: 1100px;
+  max-width: 720px;
   margin: 0 auto 20px;
-  color: var(--danger-text);
+  padding: 12px 14px;
+  border: 1px solid var(--danger-text, #c44);
+  background: color-mix(in srgb, var(--danger-text, #c44) 10%, transparent);
+  color: var(--danger-text, #c44);
   text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .ticket-pricing-notice {
@@ -204,6 +209,52 @@
   border-left: 2px solid var(--accent);
   border-bottom: 2px solid var(--accent);
   transform: rotate(-45deg);
+}
+
+.ticket-pricing-contact {
+  max-width: 560px;
+  margin: 48px auto 0;
+  padding-top: 28px;
+  text-align: center;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--border-soft, rgba(255, 255, 255, 0.12)) 90%, transparent);
+}
+
+.ticket-pricing-contact-kicker {
+  margin: 0 0 8px;
+  font-family: var(--font-subheading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.ticket-pricing-contact-text {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.ticket-pricing-contact-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1px solid var(--btn-border, #6e4000);
+  background: transparent;
+  color: var(--accent-text);
+  font-family: var(--font-subheading);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.ticket-pricing-contact-link:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .ticket-pricing-foot {

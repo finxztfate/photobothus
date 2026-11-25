@@ -1,0 +1,29 @@
+.feedback-page .feedback-card textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--bg-input, var(--bg-card-alt));
+  color: var(--text-heading);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.feedback-success {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.feedback-success p {
+  margin: 0;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+.feedback-success .auth-footer {
+  margin: 0;
+  text-align: center;
+}

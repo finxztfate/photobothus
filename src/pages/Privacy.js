@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../data/siteContact';
 import './Legal.css';
 
 function Privacy() {
@@ -125,9 +126,7 @@ function Privacy() {
         <h2>11. Contact</h2>
         <p>
           Privacy questions:{' '}
-          <a href="https://ig.me/m/photobothus" target="_blank" rel="noopener noreferrer">
-            @photobothus on Instagram
-          </a>
+          <a href={CONTACT_MAILTO}>{CONTACT_EMAIL}</a>
           .
         </p>
       </section>
@@ -135,7 +134,6 @@ function Privacy() {
       <div className="legal-links">
         <Link to="/terms">Terms of Use</Link>
         <Link to="/faq">FAQ</Link>
-        <Link to="/">Home</Link>
       </div>
     </div>
   );

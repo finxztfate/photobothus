@@ -262,6 +262,11 @@ export function getPublicLayouts() {
   return STRIP_LAYOUTS.filter((layout) => layout.publicAvailable !== false);
 }
 
+/** Layouts reserved for hosted events (hidden from the public booth). */
+export function getEventExclusiveLayouts() {
+  return STRIP_LAYOUTS.filter((layout) => layout.publicAvailable === false);
+}
+
 export function isPublicLayout(idOrSlug) {
   return getLayoutById(idOrSlug).publicAvailable !== false;
 }

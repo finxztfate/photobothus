@@ -38,7 +38,7 @@ function formatSavedAt(value) {
 }
 
 function MyGallery() {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [strips, setStrips] = useState([]);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
@@ -202,7 +202,6 @@ function MyGallery() {
       <div className="gallery-page">
         <div className="gallery-empty">
           <h1>Your gallery</h1>
-          <p>Log in to see strips saved to your Photobothus account.</p>
           <Link className="gallery-empty-cta" to="/login">Log in</Link>
         </div>
       </div>
@@ -220,11 +219,9 @@ function MyGallery() {
       <header className="gallery-header gallery-header--account">
         <div>
           <h1>Your gallery</h1>
-          <p>
-            {strips.length
-              ? `${strips.length} strip${strips.length === 1 ? '' : 's'} saved${user?.displayName ? ` for ${user.displayName.split(' ')[0]}` : ''}.`
-              : 'Strips you save from the editor live here — not on your phone.'}
-          </p>
+          {strips.length > 0 ? (
+            <p>{strips.length} strip{strips.length === 1 ? '' : 's'}</p>
+          ) : null}
         </div>
         <Link className="gallery-header-cta" to="/layouts">Start photobooth</Link>
       </header>
@@ -233,12 +230,7 @@ function MyGallery() {
         <div className="gallery-spotlight-banner">
           <div>
             <strong>{spotlightPending ? 'Spotlight pending review' : 'This week’s Spotlight entry'}</strong>
-            <p>
-              {stripLabel(spotlightEntry)}
-              {spotlightPending
-                ? ' — we’ll check that it’s eligible before it goes public. One strip at a time.'
-                : ' — one strip at a time. Remove it to enter a different one.'}
-            </p>
+            <p>{stripLabel(spotlightEntry)}</p>
           </div>
           <button
             type="button"
@@ -275,10 +267,6 @@ function MyGallery() {
       {strips.length === 0 ? (
         <div className="gallery-empty">
           <h2>No strips yet</h2>
-          <p>
-            After you shoot, tap <strong>Save strip</strong> in the editor. Event booth photos
-            stay on the Event Dashboard.
-          </p>
           <Link className="gallery-empty-cta" to="/layouts">Start photobooth</Link>
         </div>
       ) : (
@@ -313,11 +301,7 @@ function MyGallery() {
                   <div className="gallery-card-copy">
                     <span className="gallery-card-title">{stripLabel(strip)}</span>
                     <span className="gallery-card-hint">
-                      {blocked
-                        ? 'One entry already in'
-                        : rejected
-                          ? 'Not eligible — try another strip'
-                          : formatSavedAt(strip.createdAt)}
+                      {rejected ? 'Not approved' : formatSavedAt(strip.createdAt)}
                     </span>
                   </div>
                   <div className="gallery-card-actions">
@@ -327,7 +311,6 @@ function MyGallery() {
                       onClick={() => (inSpotlight ? setPendingSpotlightOff(strip) : openSpotlight(strip))}
                       disabled={busyId === strip.id || blocked}
                       aria-pressed={inSpotlight}
-                      title={blocked ? 'You already have one strip on Spotlight' : undefined}
                     >
                       {inSpotlight ? (status === 'pending' ? 'Cancel' : 'Remove') : rejected ? 'Try again' : 'Enter Spotlight'}
                     </button>
@@ -366,10 +349,6 @@ function MyGallery() {
             </div>
             <div className="spotlight-modal-fields">
               <h2 id="spotlight-modal-title">Enter Spotlight</h2>
-              <p>
-                Submit this strip for review. If it’s approved, it joins this week’s Photo of the Week contest.
-                Only one strip can be entered at a time.
-              </p>
               {DETAIL_FIELDS.map(([key, label, type, hint]) => (
                 <label key={key}>
                   {label}
@@ -426,11 +405,7 @@ function MyGallery() {
       {pendingSpotlightOff && (
         <ConfirmModal
           title={pendingSpotlightOff?.spotlightStatus === 'pending' ? 'Cancel Spotlight submission?' : 'Remove from Spotlight?'}
-          message={
-            pendingSpotlightOff?.spotlightStatus === 'pending'
-              ? `${stripLabel(pendingSpotlightOff)} will leave the review queue. You can submit another strip after.`
-              : `${stripLabel(pendingSpotlightOff)} will leave this week’s contest. You can enter another strip after.`
-          }
+          message={stripLabel(pendingSpotlightOff)}
           confirmLabel={pendingSpotlightOff?.spotlightStatus === 'pending' ? 'Cancel submission' : 'Remove'}
           onCancel={() => setPendingSpotlightOff(null)}
           onConfirm={() => removeSpotlight(pendingSpotlightOff)}

@@ -64,11 +64,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 18px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
+  padding: 14px 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .gallery-spotlight-banner p {
@@ -134,7 +134,17 @@
   color: var(--danger-text);
 }
 
-.gallery-empty,
+.gallery-empty {
+  max-width: 520px;
+  margin: 40px auto;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 32px 8px;
+  box-shadow: none;
+}
+
 .events-empty {
   max-width: 520px;
   margin: 40px auto;
@@ -222,9 +232,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
+  padding: 10px 0;
+  background: transparent;
+  border: none;
   border-radius: 0;
 }
 
@@ -255,11 +265,13 @@
 }
 
 .gallery-card.is-selected {
-  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .gallery-card.is-spotlight {
-  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .gallery-spotlight-badge {
@@ -291,7 +303,14 @@
   background: rgba(20, 12, 8, 0.72);
 }
 
-.gallery-card,
+.gallery-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+}
+
 .events-card,
 .admin-card {
   background: var(--bg-card);
@@ -313,8 +332,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
-  background: var(--bg-card-alt);
+  padding: 0;
+  background: transparent;
 }
 
 .gallery-strip-frame {
@@ -653,23 +672,6 @@
     align-items: stretch;
   }
 
-  .spotlight-modal {
-    grid-template-columns: 1fr;
-    padding: 20px;
-  }
-
-  .spotlight-modal-fields {
-    grid-template-columns: 1fr;
-  }
-
-  .spotlight-modal-preview {
-    min-height: 180px;
-  }
-
-  .spotlight-social-row {
-    grid-template-columns: 1fr;
-  }
-
   .admin-table {
     display: block;
     overflow-x: auto;
@@ -850,4 +852,41 @@
 .spotlight-modal-actions button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* After base modal rules so mobile overrides win */
+@media (max-width: 640px) {
+  .spotlight-modal-backdrop {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .spotlight-modal {
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .spotlight-modal-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .spotlight-modal-preview {
+    min-height: 180px;
+  }
+
+  .spotlight-social-row {
+    grid-template-columns: 1fr;
+  }
+
+  .spotlight-modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .spotlight-modal-actions button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
 }
