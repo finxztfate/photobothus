@@ -182,15 +182,24 @@ async function main() {
     await ensureFeedbackTable(connection, config.database);
 
     // Only replaces the public default, so a password changed later in admin settings is kept.
+    // Also fixes a bad seed that stored plaintext "admin123" instead of a bcrypt hash.
     if (process.env.ADMIN_PASSWORD) {
       const [admins] = await connection.query("SELECT id, password_hash FROM users WHERE role = 'admin'");
       for (const admin of admins) {
-        if (admin.password_hash && (await bcrypt.compare(DEFAULT_ADMIN_PASSWORD, admin.password_hash))) {
+        const stored = String(admin.password_hash || '');
+        const isPlainDefault = stored === DEFAULT_ADMIN_PASSWORD;
+        const isHashedDefault =
+          stored.startsWith('$2') && (await bcrypt.compare(DEFAULT_ADMIN_PASSWORD, stored));
+        if (isPlainDefault || isHashedDefault) {
           const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
           await connection.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, admin.id]);
           console.log(`Replaced default password for admin #${admin.id}`);
         }
       }
+    } else if (process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production') {
+      console.warn(
+        'ADMIN_PASSWORD is not set. Live admin login will refuse the default password until you set it and redeploy.'
+      );
     }
   } finally {
     await connection.end();

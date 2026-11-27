@@ -13,12 +13,26 @@ function isLiveSite() {
   return process.env.NODE_ENV === 'production' || Boolean(process.env.RAILWAY_ENVIRONMENT);
 }
 
-function keyFromHex(value) {
-  const key = Buffer.from(String(value || '').trim(), 'hex');
-  if (key.length !== 32) {
-    throw new Error('PHOTO_ENCRYPTION_KEY must be 64 hex characters');
+function normalizeKeyHex(value) {
+  let s = String(value || '').trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
   }
-  return key;
+  // Railway / pasted secrets sometimes include whitespace or newlines.
+  return s.replace(/\s+/g, '');
+}
+
+function keyFromHex(value) {
+  const hex = normalizeKeyHex(value);
+  if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+    throw new Error(
+      `PHOTO_ENCRYPTION_KEY must be 64 hex characters (0-9a-f); got length=${hex.length}`
+    );
+  }
+  return Buffer.from(hex, 'hex');
 }
 
 function photoKey() {

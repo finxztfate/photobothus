@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS spotlight_likes (
 INSERT INTO users (email, password_hash, display_name, role)
 SELECT
   'admin@photobothus.local',
-  'admin123',
+  '$2a$10$qsUOLpwL5mGeX9FMzrGXdee2mn9QHdhkbXVPaGAw1liaMja7bgvbq',
   'Admin',
   'admin'
 FROM DUAL
