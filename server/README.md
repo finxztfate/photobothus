@@ -6,11 +6,10 @@
 3. `npm install`
 4. `npm run dev` — API on http://localhost:4000
 
-## Seed admin
-- Email: `admin@photobothus.local`
-- Password: `admin123` — a one-time password. The first sign-in only lets you set a new one in Settings; nothing else in the dashboard opens until you do.
-- On a live site (`NODE_ENV=production` or Railway) `admin123` is refused. Set `ADMIN_PASSWORD` and run `npm run db:init` instead.
-- Admin uses email/password at `/admin/login` (not Google).
+## Admin account
+- Set `ADMIN_PASSWORD` and run `npm run db:init` (Railway does this on deploy). That creates `admin@photobothus.local` if missing, or replaces an old default `admin123` hash if one is still in the DB.
+- After that, sign in at `/admin/login` with that email and `ADMIN_PASSWORD`. Change it anytime in Admin → Settings (later deploys will not overwrite a non-default password).
+- Admin uses email/password only (not Google).
 
 ## Auth rate limits
 Failed attempts are limited per IP (successful requests do not count):
@@ -43,7 +42,7 @@ Generate a new admin hash: `npm run hash-password -- yourpassword`
 2. On the app service, set variables:
    - `MYSQL_URL` = `${{MySQL.MYSQL_URL}}`
    - `JWT_SECRET` = a long random string
-   - `ADMIN_PASSWORD` = the admin password to use instead of `admin123`
+   - `ADMIN_PASSWORD` = bootstrap admin password (creates `admin@photobothus.local` on init)
    - `GOOGLE_CLIENT_ID` = your Google OAuth client ID
    - `REACT_APP_GOOGLE_CLIENT_ID` = the same client ID. The project `.env` is no longer committed, so the React build reads this from the service variables.
    - `UPLOADS_DIR` = `/data/uploads`

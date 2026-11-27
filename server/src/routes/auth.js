@@ -165,7 +165,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (usingDefaultPassword && isLiveSite()) {
       return res.status(403).json({
         error:
-          'The default admin password is disabled on a live site. Set ADMIN_PASSWORD and run "npm run db:init" to replace it.',
+          'The legacy default admin password is disabled on a live site. Set ADMIN_PASSWORD and redeploy so db:init can replace it.',
       });
     }
 

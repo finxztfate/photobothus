@@ -104,18 +104,8 @@ CREATE TABLE IF NOT EXISTS spotlight_likes (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Default admin password: admin123 (email/password only — not Google)
--- Regenerate with: npm run hash-password -- admin123
-INSERT INTO users (email, password_hash, display_name, role)
-SELECT
-  'admin@photobothus.local',
-  '$2a$10$qsUOLpwL5mGeX9FMzrGXdee2mn9QHdhkbXVPaGAw1liaMja7bgvbq',
-  'Admin',
-  'admin'
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM users WHERE email = 'admin@photobothus.local'
-);
+-- Admin is not seeded here. Create/update it with ADMIN_PASSWORD via `npm run db:init`
+-- (email: admin@photobothus.local).
 
 CREATE TABLE IF NOT EXISTS payments (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
