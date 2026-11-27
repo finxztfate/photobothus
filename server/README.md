@@ -12,6 +12,13 @@
 - On a live site (`NODE_ENV=production` or Railway) `admin123` is refused. Set `ADMIN_PASSWORD` and run `npm run db:init` instead.
 - Admin uses email/password at `/admin/login` (not Google).
 
+## Auth rate limits
+Failed attempts are limited per IP (successful requests do not count):
+- `POST /api/auth/login` — 5 / minute (`AUTH_LOGIN_RATE_MAX`)
+- `POST /api/auth/google` — 10 / minute (`AUTH_GOOGLE_RATE_MAX`)
+- `POST /api/admin/change-password` — 5 / minute (`AUTH_PASSWORD_CHANGE_RATE_MAX`)
+There is no public password-reset endpoint; admins change passwords while signed in.
+
 ## Tests
 `npm test` runs the API tests in `test/`. They use an in-memory stand-in for MySQL (`test-support/fakeDb.js`), so no database is needed.
 

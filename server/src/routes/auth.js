@@ -12,13 +12,20 @@ function isLiveSite() {
   return process.env.NODE_ENV === 'production' || Boolean(process.env.RAILWAY_ENVIRONMENT);
 }
 
-// Password login is the admin entry point, so slow down guessing:
-// 10 failed attempts per IP, then a 15-minute wait. Successful logins don't count.
+// Auth endpoints are brute-force targets. Cap failed attempts per IP.
+// Successful requests do not consume the budget.
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: 60 * 1000,
+  max: Number(process.env.AUTH_LOGIN_RATE_MAX || 5),
   countOnlyFailures: true,
-  message: 'Too many failed login attempts. Please try again in 15 minutes.',
+  message: 'Too many failed login attempts. Please try again in a minute.',
+});
+
+const googleAuthLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.AUTH_GOOGLE_RATE_MAX || 10),
+  countOnlyFailures: true,
+  message: 'Too many Google sign-in attempts. Please try again in a minute.',
 });
 
 async function findUserByEmail(email) {
@@ -39,7 +46,7 @@ async function findUserByGoogleId(googleId) {
   return rows[0] || null;
 }
 
-router.post('/google', async (req, res) => {
+router.post('/google', googleAuthLimiter, async (req, res) => {
   try {
     const credential = String(req.body.credential || '').trim();
     const mode = String(req.body.mode || 'login').trim().toLowerCase();

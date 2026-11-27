@@ -25,11 +25,20 @@ const {
 } = require('../utils/spotlight');
 const { parseSpotlightDetails } = require('../utils/spotlightDetails');
 const { addTickets } = require('../utils/tickets');
+const { rateLimit } = require('../middleware/rateLimit');
 const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
 router.use(requireAuth, requireAdmin, requirePasswordChanged);
+
+// Slow password guessing on the change-password form (no public reset endpoint).
+const changePasswordLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.AUTH_PASSWORD_CHANGE_RATE_MAX || 5),
+  countOnlyFailures: true,
+  message: 'Too many password change attempts. Please try again in a minute.',
+});
 
 function settingsPayload(settings) {
   return {
@@ -674,7 +683,7 @@ router.patch('/settings', async (req, res) => {
   }
 });
 
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', changePasswordLimiter, async (req, res) => {
   try {
     const currentPassword = String(req.body.currentPassword || '');
     const newPassword = String(req.body.newPassword || '');
