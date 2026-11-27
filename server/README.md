@@ -7,8 +7,9 @@
 4. `npm run dev` — API on http://localhost:4000
 
 ## Admin account
-- Set `ADMIN_PASSWORD` and run `npm run db:init` (Railway does this on deploy). That creates `admin@photobothus.local` if missing, or replaces an old default `admin123` hash if one is still in the DB.
-- After that, sign in at `/admin/login` with that email and `ADMIN_PASSWORD`. Change it anytime in Admin → Settings (later deploys will not overwrite a non-default password).
+- Set `ADMIN_PASSWORD` and run `npm run db:init` (Railway does this on deploy). That creates or **resets** `admin@photobothus.local` to that password on every init.
+- Sign in at `/admin/login` with `admin@photobothus.local` and the same `ADMIN_PASSWORD` value (plain text, no quotes).
+- `admin123` is legacy and refused when `ADMIN_PASSWORD` is set or the site is live.
 - Admin uses email/password only (not Google).
 
 ## Auth rate limits

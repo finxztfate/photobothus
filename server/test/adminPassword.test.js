@@ -69,7 +69,7 @@ test('a live site refuses the seeded password outright', async () => {
   try {
     const refused = await login('admin123');
     assert.equal(refused.status, 403);
-    assert.match(refused.body.error, /default admin password is disabled/i);
+    assert.match(refused.body.error, /admin123 password is disabled/i);
     assert.equal(refused.body.token, undefined);
   } finally {
     delete process.env.NODE_ENV;

@@ -6,22 +6,21 @@ const bcrypt = require('bcryptjs');
 const { getDbConfig } = require('../src/db');
 
 const schemaPath = path.join(__dirname, '..', 'sql', 'schema.sql');
-const DEFAULT_ADMIN_PASSWORD = 'admin123';
 const ADMIN_EMAIL = 'admin@photobothus.local';
 
-async function isDefaultAdminHash(stored) {
-  const value = String(stored || '');
-  if (!value || value === DEFAULT_ADMIN_PASSWORD) return true;
-  if (!value.startsWith('$2')) return false;
-  try {
-    return await bcrypt.compare(DEFAULT_ADMIN_PASSWORD, value);
-  } catch {
-    return false;
+function readAdminPassword() {
+  let value = String(process.env.ADMIN_PASSWORD || '').trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
   }
+  return value;
 }
 
 async function ensureAdminFromEnv(connection) {
-  const password = process.env.ADMIN_PASSWORD;
+  const password = readAdminPassword();
   if (!password) {
     if (process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production') {
       console.warn(
@@ -31,29 +30,27 @@ async function ensureAdminFromEnv(connection) {
     return;
   }
 
+  // ADMIN_PASSWORD is the source of truth for the bootstrap admin on every init.
   const hash = await bcrypt.hash(password, 10);
-  const [admins] = await connection.query(
-    "SELECT id, email, password_hash FROM users WHERE role = 'admin' OR email = ? ORDER BY id ASC",
+  const [rows] = await connection.query(
+    'SELECT id FROM users WHERE email = ? LIMIT 1',
     [ADMIN_EMAIL]
   );
 
-  if (!admins.length) {
+  if (!rows.length) {
     await connection.query(
       'INSERT INTO users (email, password_hash, display_name, role) VALUES (?, ?, ?, ?)',
       [ADMIN_EMAIL, hash, 'Admin', 'admin']
     );
-    console.log(`Created admin ${ADMIN_EMAIL} from ADMIN_PASSWORD`);
+    console.log(`Created admin ${ADMIN_EMAIL} from ADMIN_PASSWORD (length=${password.length})`);
     return;
   }
 
-  // Only replaces the public default (including old plaintext seeds), so a password
-  // changed later in admin settings is kept.
-  for (const admin of admins) {
-    if (await isDefaultAdminHash(admin.password_hash)) {
-      await connection.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, admin.id]);
-      console.log(`Replaced default password for admin #${admin.id}`);
-    }
-  }
+  await connection.query(
+    "UPDATE users SET password_hash = ?, role = 'admin', display_name = COALESCE(NULLIF(display_name, ''), 'Admin') WHERE id = ?",
+    [hash, rows[0].id]
+  );
+  console.log(`Synced admin ${ADMIN_EMAIL} password from ADMIN_PASSWORD (length=${password.length})`);
 }
 
 // schema.sql uses CREATE TABLE IF NOT EXISTS, which leaves an existing events

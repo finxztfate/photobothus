@@ -159,13 +159,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // The seeded admin password is public. A live site refuses it; elsewhere it
-    // signs in to a session that can do nothing except set a new password.
+    // admin123 is public/legacy. Refuse it on live sites, or whenever ADMIN_PASSWORD
+    // is configured (that env var is the real bootstrap password).
     const usingDefaultPassword = row.role === 'admin' && password === DEFAULT_ADMIN_PASSWORD;
-    if (usingDefaultPassword && isLiveSite()) {
+    const adminPasswordConfigured = Boolean(String(process.env.ADMIN_PASSWORD || '').trim());
+    if (usingDefaultPassword && (isLiveSite() || adminPasswordConfigured)) {
       return res.status(403).json({
         error:
-          'The legacy default admin password is disabled on a live site. Set ADMIN_PASSWORD and redeploy so db:init can replace it.',
+          'The legacy admin123 password is disabled. Use the ADMIN_PASSWORD value from your host, or set ADMIN_PASSWORD and redeploy.',
       });
     }
 
